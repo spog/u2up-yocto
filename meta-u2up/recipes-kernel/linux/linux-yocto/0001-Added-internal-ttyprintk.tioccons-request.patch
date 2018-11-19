@@ -1,0 +1,216 @@
+From c4ff2aa23d2e296750dc4af01ff4569fe1a0a2fa Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Samo=20Poga=C4=8Dnik?= <samo_pogacnik@t-2.net>
+Date: Thu, 15 Nov 2018 18:10:32 +0100
+Subject: [PATCH] Added internal ttyprintk.tioccons request.
+
+Setting kernel command line parameter "ttyprintk.tioccons=1",
+causes automatic console redirection during driver initialization.
+The same kind of console redirection occures, if ttyprintk driver
+has been loaded as module with module parameter "tioccons=1".
+---
+ drivers/char/ttyprintk.c | 157 ++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 154 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/char/ttyprintk.c b/drivers/char/ttyprintk.c
+index 67549ce88cc9..9df608190a4b 100644
+--- a/drivers/char/ttyprintk.c
++++ b/drivers/char/ttyprintk.c
+@@ -19,6 +19,138 @@
+ #include <linux/tty.h>
+ #include <linux/module.h>
+ 
++#include <linux/fs.h>
++#include <linux/file.h>
++#include <linux/mount.h>
++
++static struct file_operations tpkfs_fops;
++static struct inode *tpkfs_inodp = NULL;
++static struct file *tpkfs_filp = NULL;
++
++static int tpkfs_cnt;
++static struct vfsmount *tpkfs_mnt;
++
++static const struct dentry_operations tpkfs_ops = {
++	.d_dname = simple_dname,
++};
++
++static struct dentry *tpkfs_mount(struct file_system_type *fs_type, int flags,
++					const char *dev_name, void *data)
++{
++	return mount_pseudo(fs_type, "tpkfs:", NULL, &tpkfs_ops, 0x010204ff);
++}
++
++static struct file_system_type tpkfs_type = {
++	.name = "tpkfs",
++	.owner = THIS_MODULE,
++	.mount = tpkfs_mount,
++	.kill_sb = kill_anon_super,
++};
++
++static struct inode *tpkfs_inode_new(void)
++{
++	struct inode *inode;
++	int r;
++
++	r = simple_pin_fs(&tpkfs_type, &tpkfs_mnt, &tpkfs_cnt);
++	if (r < 0) {
++		pr_err("Cannot mount pseudo fs: %d\n", r);
++		return ERR_PTR(r);
++	}
++
++	inode = alloc_anon_inode(tpkfs_mnt->mnt_sb);
++	if (IS_ERR(inode))
++		simple_release_fs(&tpkfs_mnt, &tpkfs_cnt);
++
++	return inode;
++}
++
++static void tpkfs_inode_free(struct inode *inode)
++{
++	if (inode) {
++		iput(inode);
++		simple_release_fs(&tpkfs_mnt, &tpkfs_cnt);
++	}
++}
++
++static int tpk_tioccons_req = 0;
++
++static int tpk_tioccons_set(struct tty_driver *ttydrv)
++{
++	const char *name = "tpkfs";
++	struct qstr this;
++	struct path path;
++	int ret = -ENOMEM;
++
++	tpkfs_inodp = tpkfs_inode_new();
++	ret = PTR_ERR_OR_ZERO(tpkfs_inodp);
++	if (ret) {
++		pr_err("ttyprintk: tpkfs_inode_new() inode allocation failed (%d)\n", ret);
++		goto err_inode_tioccons;
++	}
++	init_special_inode(tpkfs_inodp, S_IFCHR | 0600, ttydrv->cdevs[0]->dev);
++
++	this.name = name;
++	this.len = strlen(name);
++	this.hash = 0;
++	path.dentry = d_alloc_pseudo(tpkfs_mnt->mnt_sb, &this);
++	if (!path.dentry) {
++		ret = -ENOMEM;
++		pr_err("ttyprintk: d_alloc_pseudo() path.dentry allocation failed (%d)\n", ret);
++		goto err_dentry_tioccons;
++	}
++
++	path.mnt = mntget(tpkfs_mnt);
++	ihold(tpkfs_inodp);
++
++	d_instantiate(path.dentry, tpkfs_inodp);
++
++	tpkfs_filp = alloc_file(&path, OPEN_FMODE(FMODE_WRITE | FMODE_READ), ttydrv->cdevs[0]->ops);
++	ret = PTR_ERR_OR_ZERO(tpkfs_filp);
++	if (ret) {
++		pr_err("ttyprintk: alloc_file() tpkfs_filp allocation failed (%d)\n", ret);
++		goto err_file_tioccons;
++	}
++	tpkfs_filp->f_mapping = tpkfs_inodp->i_mapping;
++	tpkfs_filp->f_flags = O_RDWR;
++
++	if (
++		tpkfs_filp->f_op->open &&
++		tpkfs_filp->f_op->release &&
++		tpkfs_filp->f_op->unlocked_ioctl
++	) {
++		ret = tpkfs_filp->f_op->open(tpkfs_inodp, tpkfs_filp);
++		if (ret) {
++			pr_err("ttyprintk: tpkfs_filp->f_op->open() failed (%d)\n", ret);
++			goto err_open_tioccons;
++		}
++
++		ret = tpkfs_filp->f_op->unlocked_ioctl(tpkfs_filp, TIOCCONS, 0);
++		if (ret) {
++			pr_err("ttyprintk: tpkfs_filp->f_op->unlocked_ioctl() failed (%d)\n", ret);
++			goto err_ioctl_tioccons;
++		}
++
++		fput(tpkfs_filp);
++	} else {
++		pr_err("ttyprintk: tpkfs_filp->f_op->...() missing\n");
++		ret = -EINVAL;
++		goto err_open_tioccons;
++	}
++
++	return 0;
++
++err_ioctl_tioccons:
++	tpkfs_filp->f_op->release(tpkfs_inodp, tpkfs_filp);
++err_open_tioccons:
++err_file_tioccons:
++	path_put(&path);
++err_dentry_tioccons:
++	tpkfs_inode_free(tpkfs_inodp);
++err_inode_tioccons:
++	return ret;
++}
++
+ struct ttyprintk_port {
+ 	struct tty_port port;
+ 	struct mutex port_write_mutex;
+@@ -107,6 +239,9 @@ static void tpk_close(struct tty_struct *tty, struct file *filp)
+ 	mutex_unlock(&tpkp->port_write_mutex);
+ 
+ 	tty_port_close(&tpkp->port, tty, filp);
++
++	if ((tpkfs_filp) && (filp == tpkfs_filp))
++		tpkfs_inode_free(tpkfs_inodp);
+ }
+ 
+ /*
+@@ -118,7 +253,6 @@ static int tpk_write(struct tty_struct *tty,
+ 	struct ttyprintk_port *tpkp = tty->driver_data;
+ 	int ret;
+ 
+-
+ 	/* exclusive use of tpk_printk within this tty */
+ 	mutex_lock(&tpkp->port_write_mutex);
+ 	ret = tpk_printk(buf, count);
+@@ -197,12 +331,25 @@ static int __init ttyprintk_init(void)
+ 	ret = tty_register_driver(ttyprintk_driver);
+ 	if (ret < 0) {
+ 		printk(KERN_ERR "Couldn't register ttyprintk driver\n");
+-		goto error;
++		goto err_register;
++	}
++
++	if (tpk_tioccons_req != 0) {
++		ret = tpk_tioccons_set(ttyprintk_driver);
++		if (ret) {
++			pr_err("ttyprintk: tpk_tioccons_set() failed (%d)\n", ret);
++			goto err_tioccons;
++		}
+ 	}
+ 
++#ifdef MODULE
++	pr_info("ttyprintk: initialized\n");
++#endif
+ 	return 0;
+ 
+-error:
++err_tioccons:
++	tty_unregister_driver(ttyprintk_driver);
++err_register:
+ 	put_tty_driver(ttyprintk_driver);
+ 	tty_port_destroy(&tpk_port.port);
+ 	return ret;
+@@ -213,9 +360,13 @@ static void __exit ttyprintk_exit(void)
+ 	tty_unregister_driver(ttyprintk_driver);
+ 	put_tty_driver(ttyprintk_driver);
+ 	tty_port_destroy(&tpk_port.port);
++	pr_info("ttyprintk: exit\n");
+ }
+ 
+ device_initcall(ttyprintk_init);
+ module_exit(ttyprintk_exit);
+ 
++module_param_named(tioccons, tpk_tioccons_req, int, 0);
++MODULE_PARM_DESC(tioccons, " Internally redirect console to ttyprintk during module initialization, if set to non-zero.");
++
+ MODULE_LICENSE("GPL");
