@@ -1,3 +1,4 @@
-downloads
-meta\-*
-poky
+*.log
+/downloads
+/meta\-*
+/u2up/build*
