@@ -1,0 +1,294 @@
+#!/bin/bash
+#
+# The "automk" project build rules
+#
+# Copyright (C) 2017-2018 Samo Pogacnik <samo_pogacnik@t-2.net>
+# All rights reserved.
+#
+# This file is part of the "automk" software project.
+# This file is provided under the terms of the BSD 3-Clause license,
+# available in the LICENSE file of the "automk" software project.
+#
+#set -x
+#set -e
+
+function usage_help ()
+{
+	echo "Usage: "$(basename  $0)" [OPTIONS] COMMAND MACHINE"
+	echo " OPTIONS := [{--help|-h}]"
+	echo " COMMAND := prepare|build"
+	echo " MACHINE := qemux86|raspberrypi3-64"
+	echo
+	return
+}
+
+pre="$(basename  $0)-u2up: "
+OPTIONS=""
+COMMAND=""
+MACHINE=""
+
+DOWNLOADS="downloads"
+
+POKY="poky"
+POKY_BRANCH="sumo"
+POKY_REPO_URL="git://git.yoctoproject.org/poky"
+
+while [[ $# > 0 ]]
+do
+#	echo "AAAAAAA:$#"
+#	echo "aaaaaaa:$1"
+	case $1 in
+	--help|-h)
+		usage_help
+		exit 0 
+		;;
+	prepare|build)
+		if [ -z "$COMMAND" ] && [ -z "$MACHINE" ]; then
+			COMMAND=$1
+		else
+			echo $pre"ERROR - Wrong syntax!"
+			echo
+			usage_help
+			exit 1
+		fi
+		;;
+	qemux86|raspberrypi3-64)
+		if [ -n "$COMMAND" ] && [ -z "$MACHINE" ]; then
+			MACHINE=$1
+			case $MACHINE in
+			qemux86)
+				BSP_LAYER_NAME=""
+				MACH=""
+				MACH_BRANCH=""
+				MACH_REPO_URL=""
+				;;
+			raspberrypi3-64)
+				BSP_LAYER_NAME="raspberrypi"
+				MACH="meta-${BSP_LAYER_NAME}"
+				MACH_BRANCH="sumo"
+				MACH_REPO_URL="git://git.yoctoproject.org/${MACH}"
+				;;
+			esac
+		else
+			echo $pre"ERROR - Wrong syntax!"
+			echo
+			usage_help
+			exit 1
+		fi
+		;;
+	*)
+		echo $pre"ERROR - Unknown option: "$1
+		echo
+		usage_help
+		exit 1
+		;;
+	esac
+	shift # to the next token, if any
+done
+
+if [ -z "$COMMAND" ]; then
+	echo $pre"ERROR - Missing COMMAND!"
+	echo
+	usage_help
+	exit 1
+fi
+
+if [ -z "$MACHINE" ]; then
+	echo $pre"ERROR - Missing MACHINE!"
+	echo
+	usage_help
+	exit 1
+fi
+
+WDIR=$(dirname $0)
+pushd $WDIR &> /dev/null
+
+#pwd
+
+# Check downloads mirror!
+function check_downloads ()
+{
+	if [ ! -d "$DOWNLOADS" ]; then
+		return 1
+	fi
+	return 0
+}
+
+# Check subdir!
+function check_subdir ()
+{
+	ret=1
+	SUBTREE=$1
+	SUBTREE_BRANCH=$2
+
+	if [ -z "$SUBTREE" ]; then
+		return 0
+	fi
+
+	if [ -z "$SUBTREE_BRANCH" ]; then
+		echo $pre"ERROR - check_subdir () Invalid params!"
+		return $ret
+	fi
+
+	if [ -d "$SUBTREE" ]; then
+		pushd $SUBTREE &> /dev/null
+		git checkout $SUBTREE_BRANCH &> /dev/null
+		ret=$?
+		popd &> /dev/null
+		if [ $ret -ne 0 ]; then
+			echo $pre"ERROR - check_subdir () Git branch test checkout error - Remove: ${SUBTREE}!"
+			rm -rf $SUBTREE
+		else
+			if [ ! -f "${DOWNLOADS}/${SUBTREE}-${SUBTREE_BRANCH}_git.tar.gz" ]; then
+				echo $pre"Archiving \"${SUBTREE}\" into \"${DOWNLOADS}/${SUBTREE}-${SUBTREE_BRANCH}_git.tar.gz\"!"
+				tar czf ${DOWNLOADS}/${SUBTREE}-${SUBTREE_BRANCH}_git.tar.gz $SUBTREE
+				if [ $? -ne 0 ]; then
+					echo $pre"WARNING - prepare failed (tar czf: ${SUBTREE} subdir not archived)!"
+					echo
+				fi
+			fi
+		fi
+	fi
+	return $ret 
+}
+
+# Prepare subdir!
+function prepare_subdir ()
+{
+	ret=1
+	SUBTREE=$1
+	SUBTREE_BRANCH=$2
+	SUBTREE_REPO_URL=$3
+
+	if [ -z "$SUBTREE" ]; then
+		return 0
+	fi
+
+	if [ -z "$SUBTREE_BRANCH" ] || [ -z "$SUBTREE_REPO_URL" ]; then
+		echo $pre"ERROR - check_subdir () Invalid params!"
+		return $ret
+	fi
+
+	echo $pre"Preparing \"${SUBTREE}\" subdir (\"$SUBTREE_BRANCH\" from \"$SUBTREE_REPO_URL\")!"
+	if [ ! -d "$SUBTREE" ]; then
+		if [ -f "${DOWNLOADS}/${SUBTREE}-${SUBTREE_BRANCH}_git.tar.gz" ]; then
+			echo $pre"Extracting \"${SUBTREE}\" from \"${DOWNLOADS}/${SUBTREE}-${SUBTREE_BRANCH}_git.tar.gz\"!"
+			tar xzf ${DOWNLOADS}/${SUBTREE}-${SUBTREE_BRANCH}_git.tar.gz
+			ret=$?
+			if [ $ret -ne 0 ]; then
+				echo $pre"ERROR - prepare failed (tar xzf: ${SUBTREE} subdir not ok)!"
+				echo
+			fi
+		else
+			git clone --single-branch -b $SUBTREE_BRANCH $SUBTREE_REPO_URL $SUBTREE
+			ret=$?
+			if [ $ret -ne 0 ]; then
+				echo $pre"ERROR - prepare failed (git clone: ${SUBTREE} subdir not ok)!"
+				echo
+			else
+				check_subdir $SUBTREE $SUBTREE_BRANCH
+				ret=$?
+			fi
+		fi
+		if [ $ret -ne 0 ]; then
+			rm -rf $SUBTREE
+		fi
+	else
+		check_subdir $SUBTREE $SUBTREE_BRANCH
+		ret=$?
+	fi
+	return $ret
+}
+
+# Prepare tree for specific machine!
+function prepare_machine ()
+{
+	ret=1
+
+	check_downloads
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		echo $pre"Creating fresh \"${DOWNLOADS}\" directory!"
+		mkdir -p $DOWNLOADS
+	fi
+	check_subdir $POKY $POKY_BRANCH
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		prepare_subdir $POKY $POKY_BRANCH $POKY_REPO_URL
+		ret=$?
+	fi
+	check_subdir $MACH $MACH_BRANCH
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		prepare_subdir $MACH $MACH_BRANCH $MACH_REPO_URL
+		ret=$?
+	fi
+
+	if [ $ret -eq 0 ]; then
+		echo $pre"Done OK!"
+	fi
+	return $ret
+}
+
+# Build image for specific machine!
+function build_machine ()
+{
+	ret=1
+
+	check_downloads
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		echo $pre"ERROR - Tree not yet prepared (downlads mirror not availabe)!"
+		echo
+		return $ret
+	fi
+	check_subdir $POKY $POKY_BRANCH
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		echo $pre"ERROR - Tree not yet prepared (poky branch not availabe)!"
+		echo
+		return $ret
+	fi
+	check_subdir $MACH $MACH_BRANCH
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		echo $pre"ERROR - Tree not yet prepared (machine branch not availabe)!"
+		echo
+		return $ret
+	fi
+
+	echo $pre"Setting build environment for \"${MACHINE}\"!"
+	source $POKY/oe-init-build-env u2up/build.$MACHINE
+
+	echo $pre"Building U2UP image for \"${MACHINE}\"!"
+	bitbake u2up-image-full-cmdline
+	ret=$?
+	if [ $ret -eq 0 ]; then
+		echo $pre"Done OK!"
+	fi
+	return $ret
+}
+
+# Execute command!
+ret=1
+case $COMMAND in
+prepare)
+	prepare_machine
+	ret=$?
+	;;
+build)
+	build_machine
+	ret=$?
+	;;
+esac
+
+exit $ret
+
+#[submodule "meta-raspberrypi"]
+#	path = meta-raspberrypi
+#	url = git://git.yoctoproject.org/meta-raspberrypi
+#	branch = sumo
+#[submodule "poky"]
+#	path = poky
+#	url = git://git.yoctoproject.org/poky
+#	branch = sumo
