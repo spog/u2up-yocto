@@ -14,10 +14,10 @@
 
 function usage_help ()
 {
-	echo "Usage: "$(basename  $0)" [OPTIONS] COMMAND MACHINE"
-	echo " OPTIONS := [{--help|-h}]"
-	echo " COMMAND := prepare|build"
+	echo "Usage: "$(basename  $0)" [MACHINE COMMAND] [OPTIONS]"
 	echo " MACHINE := qemux86|raspberrypi3-64"
+	echo " COMMAND := prepare|build"
+	echo " OPTIONS := {--help|-h}"
 	echo
 	return
 }
@@ -35,25 +35,9 @@ POKY_REPO_URL="git://git.yoctoproject.org/poky"
 
 while [[ $# > 0 ]]
 do
-#	echo "AAAAAAA:$#"
-#	echo "aaaaaaa:$1"
 	case $1 in
-	--help|-h)
-		usage_help
-		exit 0 
-		;;
-	prepare|build)
-		if [ -z "$COMMAND" ] && [ -z "$MACHINE" ]; then
-			COMMAND=$1
-		else
-			echo $pre"ERROR - Wrong syntax!"
-			echo
-			usage_help
-			exit 1
-		fi
-		;;
 	qemux86|raspberrypi3-64)
-		if [ -n "$COMMAND" ] && [ -z "$MACHINE" ]; then
+		if [ -z "$COMMAND" ] && [ -z "$MACHINE" ]; then
 			MACHINE=$1
 			case $MACHINE in
 			qemux86)
@@ -75,6 +59,20 @@ do
 			usage_help
 			exit 1
 		fi
+		;;
+	prepare|build)
+		if [ -n "$MACHINE" ] && [ -z "$COMMAND" ]; then
+			COMMAND=$1
+		else
+			echo $pre"ERROR - Wrong syntax!"
+			echo
+			usage_help
+			exit 1
+		fi
+		;;
+	--help|-h)
+		usage_help
+		exit 0 
 		;;
 	*)
 		echo $pre"ERROR - Unknown option: "$1
@@ -102,8 +100,6 @@ fi
 
 WDIR=$(dirname $0)
 pushd $WDIR &> /dev/null
-
-#pwd
 
 # Check downloads mirror!
 function check_downloads ()
@@ -238,21 +234,21 @@ function build_machine ()
 	check_downloads
 	ret=$?
 	if [ $ret -ne 0 ]; then
-		echo $pre"ERROR - Tree not yet prepared (downlads mirror not availabe)!"
+		echo $pre"ERROR - Project not yet prepared (downlads mirror not availabe)!"
 		echo
 		return $ret
 	fi
 	check_subdir $POKY $POKY_BRANCH
 	ret=$?
 	if [ $ret -ne 0 ]; then
-		echo $pre"ERROR - Tree not yet prepared (poky branch not availabe)!"
+		echo $pre"ERROR - Project not yet prepared (poky branch not availabe)!"
 		echo
 		return $ret
 	fi
 	check_subdir $MACH $MACH_BRANCH
 	ret=$?
 	if [ $ret -ne 0 ]; then
-		echo $pre"ERROR - Tree not yet prepared (machine branch not availabe)!"
+		echo $pre"ERROR - Project not yet prepared (machine branch not availabe)!"
 		echo
 		return $ret
 	fi
@@ -284,11 +280,3 @@ esac
 
 exit $ret
 
-#[submodule "meta-raspberrypi"]
-#	path = meta-raspberrypi
-#	url = git://git.yoctoproject.org/meta-raspberrypi
-#	branch = sumo
-#[submodule "poky"]
-#	path = poky
-#	url = git://git.yoctoproject.org/poky
-#	branch = sumo
