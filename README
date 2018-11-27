@@ -1,0 +1,56 @@
+The "u2up-yocto" Linux distribution build project
+=================================================
+
+--------------------------------------------------------------------
+Copyright (C) 2018 Samo Pogacnik <samo_pogacnik@t-2.net>
+All rights reserved.
+
+The "u2up-yocto" software project is provided under the terms of the
+BSD 3-Clause license, which is available in the LICENSE file of this
+project.
+--------------------------------------------------------------------
+
+Description:
+------------
+This is an umbrella project using "yocto/poky/openembedded" Linux
+distribution build system and recipe sources.
+
+"u2up-yocto" currently builds for two target machines:
+- qemux86
+- raspberypi3-64
+
+Usage:
+------
+To build a Linux distribution image for a selected target, simply
+issue the following two sample commands from the project TOPDIR:
+
+$ ./distro qemux86 prepare
+
+$ ./distro qemux86 build
+
+Find built images in "u2up/build.qemux86/tmp/deploy/images/qemux86/" for example:
+- bzImage -> bzImage--4.14.76+git0+3435617380_2c5caa7e84-r0-qemux86-20181125204414.bin
+- bzImage--4.14.76+git0+3435617380_2c5caa7e84-r0-qemux86-20181125204414.bin
+- bzImage-qemux86.bin -> bzImage--4.14.76+git0+3435617380_2c5caa7e84-r0-qemux86-20181125204414.bin
+- modules--4.14.76+git0+3435617380_2c5caa7e84-r0-qemux86-20181125204414.tgz
+- modules-qemux86.tgz -> modules--4.14.76+git0+3435617380_2c5caa7e84-r0-qemux86-20181125204414.tgz
+- u2up-image-full-cmdline-qemux86-20181124115145.testdata.json
+- u2up-image-full-cmdline-qemux86-20181124231656.testdata.json
+- u2up-image-full-cmdline-qemux86-20181125204414.qemuboot.conf
+- u2up-image-full-cmdline-qemux86-20181125204414.rootfs.ext4
+- u2up-image-full-cmdline-qemux86-20181125204414.rootfs.manifest
+- u2up-image-full-cmdline-qemux86-20181125204414.rootfs.tar.bz2
+- u2up-image-full-cmdline-qemux86-20181125204414.testdata.json
+- u2up-image-full-cmdline-qemux86.ext4 -> u2up-image-full-cmdline-qemux86-20181125204414.rootfs.ext4
+- u2up-image-full-cmdline-qemux86.manifest -> u2up-image-full-cmdline-qemux86-20181125204414.rootfs.manifest
+- u2up-image-full-cmdline-qemux86.qemuboot.conf -> u2up-image-full-cmdline-qemux86-20181125204414.qemuboot.conf
+- u2up-image-full-cmdline-qemux86.tar.bz2 -> u2up-image-full-cmdline-qemux86-20181125204414.rootfs.tar.bz2
+- u2up-image-full-cmdline-qemux86.testdata.json -> u2up-image-full-cmdline-qemux86-20181125204414.testdata.json
+
+Prerequisites:
+--------------
+Check Yocto documentation regarding host HW/SW requirements.
+
+---
+End!
+
