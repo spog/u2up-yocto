@@ -51,6 +51,12 @@ Prerequisites:
 --------------
 Check Yocto documentation regarding host HW/SW requirements.
 
+Test run for "qemux86" target:
+------------------------------
+
+.../build.qemux86$ runqemu qemux86 nographic bootparams=ttyprintk.tioccons=1
+
+
 ---
 End!
 

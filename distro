@@ -1,11 +1,11 @@
 #!/bin/bash
 #
-# The "automk" project build rules
+# The "u2up-yocto" project build tool
 #
 # Copyright (C) 2017-2018 Samo Pogacnik <samo_pogacnik@t-2.net>
 # All rights reserved.
 #
-# This file is part of the "automk" software project.
+# This file is part of the "u2up-yocto" software project.
 # This file is provided under the terms of the BSD 3-Clause license,
 # available in the LICENSE file of the "automk" software project.
 #
@@ -16,7 +16,7 @@ function usage_help ()
 {
 	echo "Usage: "$(basename  $0)" [MACHINE COMMAND] [OPTIONS]"
 	echo " MACHINE := qemux86|raspberrypi3-64"
-	echo " COMMAND := prepare|build"
+	echo " COMMAND := prepare|build|bbsh"
 	echo " OPTIONS := {--help|-h}"
 	echo
 	return
@@ -49,7 +49,7 @@ do
 			raspberrypi3-64)
 				BSP_LAYER_NAME="raspberrypi"
 				MACH="meta-${BSP_LAYER_NAME}"
-				MACH_BRANCH="sumo"
+				MACH_BRANCH="${POKY_BRANCH}"
 				MACH_REPO_URL="git://git.yoctoproject.org/${MACH}"
 				;;
 			esac
@@ -60,7 +60,7 @@ do
 			exit 1
 		fi
 		;;
-	prepare|build)
+	prepare|build|bbsh)
 		if [ -n "$MACHINE" ] && [ -z "$COMMAND" ]; then
 			COMMAND=$1
 		else
@@ -115,31 +115,33 @@ function check_subdir ()
 {
 	ret=1
 	SUBTREE=$1
-	SUBTREE_BRANCH=$2
+	BRANCH=$2
 
+	# Check if no args (first arg empty) - dummy check; not an error:
 	if [ -z "$SUBTREE" ]; then
 		return 0
 	fi
 
-	if [ -z "$SUBTREE_BRANCH" ]; then
+	# Chech second arg (if first arg exists, the second has to exist too):
+	if [ -z "$BRANCH" ]; then
 		echo $pre"ERROR - check_subdir () Invalid params!"
 		return $ret
 	fi
 
-	if [ -d "$SUBTREE" ]; then
-		pushd $SUBTREE &> /dev/null
-		git checkout $SUBTREE_BRANCH &> /dev/null
+	if [ -d "${SUBTREE}_${BRANCH}" ]; then
+		pushd ${SUBTREE}_${BRANCH} &> /dev/null
+		git checkout $BRANCH &> /dev/null
 		ret=$?
 		popd &> /dev/null
 		if [ $ret -ne 0 ]; then
-			echo $pre"ERROR - check_subdir () Git branch test checkout error - Remove: ${SUBTREE}!"
-			rm -rf $SUBTREE
+			echo $pre"ERROR - check_subdir () Git branch test checkout error - Remove: ${SUBTREE}_${BRANCH}!"
+			rm -rf ${SUBTREE}_$BRANCH
 		else
-			if [ ! -f "${DOWNLOADS}/${SUBTREE}-${SUBTREE_BRANCH}_git.tar.gz" ]; then
-				echo $pre"Archiving \"${SUBTREE}\" into \"${DOWNLOADS}/${SUBTREE}-${SUBTREE_BRANCH}_git.tar.gz\"!"
-				tar czf ${DOWNLOADS}/${SUBTREE}-${SUBTREE_BRANCH}_git.tar.gz $SUBTREE
+			if [ ! -f "${DOWNLOADS}/${SUBTREE}_${BRANCH}_git.tar.gz" ]; then
+				echo $pre"Archiving \"${SUBTREE}_${BRANCH}\" into \"${DOWNLOADS}/${SUBTREE}_${BRANCH}_git.tar.gz\"!"
+				tar czf ${DOWNLOADS}/${SUBTREE}_${BRANCH}_git.tar.gz ${SUBTREE}_$BRANCH
 				if [ $? -ne 0 ]; then
-					echo $pre"WARNING - prepare failed (tar czf: ${SUBTREE} subdir not archived)!"
+					echo $pre"WARNING - prepare failed (tar czf: ${SUBTREE}_${BRANCH} subdir not archived)!"
 					echo
 				fi
 			fi
@@ -153,44 +155,45 @@ function prepare_subdir ()
 {
 	ret=1
 	SUBTREE=$1
-	SUBTREE_BRANCH=$2
-	SUBTREE_REPO_URL=$3
+	BRANCH=$2
+	REPO_URL=$3
 
+	# Check if no args (first arg empty) - dummy check; not an error:
 	if [ -z "$SUBTREE" ]; then
 		return 0
 	fi
 
-	if [ -z "$SUBTREE_BRANCH" ] || [ -z "$SUBTREE_REPO_URL" ]; then
+	if [ -z "$BRANCH" ] || [ -z "$REPO_URL" ]; then
 		echo $pre"ERROR - check_subdir () Invalid params!"
 		return $ret
 	fi
 
-	echo $pre"Preparing \"${SUBTREE}\" subdir (\"$SUBTREE_BRANCH\" from \"$SUBTREE_REPO_URL\")!"
-	if [ ! -d "$SUBTREE" ]; then
-		if [ -f "${DOWNLOADS}/${SUBTREE}-${SUBTREE_BRANCH}_git.tar.gz" ]; then
-			echo $pre"Extracting \"${SUBTREE}\" from \"${DOWNLOADS}/${SUBTREE}-${SUBTREE_BRANCH}_git.tar.gz\"!"
-			tar xzf ${DOWNLOADS}/${SUBTREE}-${SUBTREE_BRANCH}_git.tar.gz
+	echo $pre"Preparing \"${SUBTREE}_${BRANCH}\" subdir (from \"$REPO_URL\")!"
+	if [ ! -d "${SUBTREE}" ] && [ ! -d "${SUBTREE}_${BRANCH}" ]; then
+		if [ -f "${DOWNLOADS}/${SUBTREE}_${BRANCH}_git.tar.gz" ]; then
+			echo $pre"Extracting \"${SUBTREE}\" from \"${DOWNLOADS}/${SUBTREE}_${BRANCH}_git.tar.gz\"!"
+			tar xzf ${DOWNLOADS}/${SUBTREE}_${BRANCH}_git.tar.gz
 			ret=$?
 			if [ $ret -ne 0 ]; then
-				echo $pre"ERROR - prepare failed (tar xzf: ${SUBTREE} subdir not ok)!"
+				echo $pre"ERROR - prepare failed (tar xzf: ${SUBTREE}_${BRANCH} subdir not ok)!"
 				echo
 			fi
 		else
-			git clone --single-branch -b $SUBTREE_BRANCH $SUBTREE_REPO_URL $SUBTREE
+			git clone --single-branch -b $BRANCH $REPO_URL ${SUBTREE}_$BRANCH
 			ret=$?
 			if [ $ret -ne 0 ]; then
-				echo $pre"ERROR - prepare failed (git clone: ${SUBTREE} subdir not ok)!"
+				echo $pre"ERROR - prepare failed (git clone: ${SUBTREE}_${BRANCH} subdir not ok)!"
 				echo
 			else
-				check_subdir $SUBTREE $SUBTREE_BRANCH
+				check_subdir $SUBTREE $BRANCH
 				ret=$?
 			fi
 		fi
 		if [ $ret -ne 0 ]; then
-			rm -rf $SUBTREE
+			rm -rf ${SUBTREE}_${BRANCH}
 		fi
 	else
-		check_subdir $SUBTREE $SUBTREE_BRANCH
+		check_subdir $SUBTREE $BRANCH
 		ret=$?
 	fi
 	return $ret
@@ -212,6 +215,11 @@ function prepare_machine ()
 	if [ $ret -ne 0 ]; then
 		prepare_subdir $POKY $POKY_BRANCH $POKY_REPO_URL
 		ret=$?
+		if [ $ret -ne 0 ]; then
+			echo $pre"ERROR - Failed!"
+			echo
+			return $ret
+		fi
 	fi
 	check_subdir $MACH $MACH_BRANCH
 	ret=$?
@@ -254,10 +262,18 @@ function build_machine ()
 	fi
 
 	echo $pre"Setting build environment for \"${MACHINE}\"!"
-	source $POKY/oe-init-build-env u2up/build.$MACHINE
+	source ${POKY}_${POKY_BRANCH}/oe-init-build-env u2up_${POKY_BRANCH}/build.$MACHINE
 
-	echo $pre"Building U2UP image for \"${MACHINE}\"!"
-	bitbake u2up-image-full-cmdline
+	export YOCTO_BRANCH="${POKY_BRANCH}"
+	export BB_ENV_EXTRAWHITE="$BB_ENV_EXTRAWHITE YOCTO_BRANCH"
+
+	if [ -n "${1}" ] && [ "${1}" == "bbsh" ]; then
+		echo $pre"Entering U2UP bitbake shell for \"${MACHINE}\"!"
+		bash
+	else
+		echo $pre"Building U2UP image for \"${MACHINE}\"!"
+		bitbake u2up-image-full-cmdline
+	fi
 	ret=$?
 	if [ $ret -eq 0 ]; then
 		echo $pre"Done OK!"
@@ -272,8 +288,8 @@ prepare)
 	prepare_machine
 	ret=$?
 	;;
-build)
-	build_machine
+build|bbsh)
+	build_machine $COMMAND
 	ret=$?
 	;;
 esac
