@@ -30,7 +30,7 @@ MACHINE=""
 DOWNLOADS="downloads"
 
 POKY="poky"
-POKY_BRANCH="sumo"
+POKY_BRANCH="thud"
 POKY_REPO_URL="git://git.yoctoproject.org/poky"
 
 while [[ $# > 0 ]]
