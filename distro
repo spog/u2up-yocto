@@ -15,7 +15,7 @@
 function usage_help ()
 {
 	echo "Usage: "$(basename  $0)" [MACHINE COMMAND] [OPTIONS]"
-	echo " MACHINE := qemux86|raspberrypi3-64"
+	echo " MACHINE := qemux86|intel-corei7-64|raspberrypi3-64"
 	echo " COMMAND := prepare|build|bbsh"
 	echo " OPTIONS := {--help|-h}"
 	echo
@@ -45,6 +45,12 @@ do
 				MACH=""
 				MACH_BRANCH=""
 				MACH_REPO_URL=""
+				;;
+			intel-corei7-64)
+				BSP_LAYER_NAME="intel"
+				MACH="meta-${BSP_LAYER_NAME}"
+				MACH_BRANCH="${POKY_BRANCH}"
+				MACH_REPO_URL="git://git.yoctoproject.org/${MACH}"
 				;;
 			raspberrypi3-64)
 				BSP_LAYER_NAME="raspberrypi"

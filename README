@@ -17,6 +17,7 @@ distribution build system and recipe sources.
 
 "u2up-yocto" currently builds for two target machines:
 - qemux86
+- intel-corei7-64
 - raspberypi3-64
 
 Usage:
