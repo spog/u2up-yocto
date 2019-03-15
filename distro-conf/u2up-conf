@@ -1,0 +1,8 @@
+# U2UP common vars:
+U2UP_DOWNLOADS="downloads"
+
+# U2UP Poky vars:
+U2UP_POKY="poky"
+U2UP_POKY_BRANCH="thud"
+U2UP_POKY_REPO_URL="git://git.yoctoproject.org/poky"
+

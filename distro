@@ -15,7 +15,7 @@
 function usage_help ()
 {
 	echo "Usage: "$(basename  $0)" [MACHINE COMMAND] [OPTIONS]"
-	echo " MACHINE := qemux86|intel-corei7-64|raspberrypi3-64"
+	echo " MACHINE := qemux86|intel-corei7-64|raspberrypi3-64|..."
 	echo " COMMAND := prepare|build|bbsh"
 	echo " OPTIONS := {--help|-h}"
 	echo
@@ -23,52 +23,57 @@ function usage_help ()
 }
 
 pre="$(basename  $0)-u2up: "
-OPTIONS=""
-COMMAND=""
-MACHINE=""
+U2UP_OPTIONS=""
+U2UP_COMMAND=""
 
-DOWNLOADS="downloads"
+U2UP_MACHINE=${1}
+shift
 
-POKY="poky"
-POKY_BRANCH="thud"
-POKY_REPO_URL="git://git.yoctoproject.org/poky"
+if [ -z "$U2UP_MACHINE" ]; then
+	echo $pre"ERROR - Missing MACHINE!"
+	echo
+	usage_help
+	exit 1
+fi
+
+echo "U2UP_MACHINE=${U2UP_MACHINE}"
+U2UP_MACHINE_PREFIX=${U2UP_MACHINE//-/_}
+#echo "U2UP_MACHINE_PREFIX=${U2UP_MACHINE_PREFIX}"
+
+source distro-conf/u2up-conf
+
+source distro-conf/machines-conf
+
+U2UP_BSP_LAYER_NAME_var=${U2UP_MACHINE_PREFIX}_BSP_LAYER_NAME
+U2UP_BSP_LAYER_NAME=${!U2UP_BSP_LAYER_NAME_var}
+echo "U2UP_BSP_LAYER_NAME=${U2UP_BSP_LAYER_NAME}"
+
+U2UP_MACH_var=${U2UP_MACHINE_PREFIX}_MACH
+U2UP_MACH=${!U2UP_MACH_var}
+echo "U2UP_MACH=${U2UP_MACH}"
+
+U2UP_MACH_BRANCH_var=${U2UP_MACHINE_PREFIX}_MACH_BRANCH
+U2UP_MACH_BRANCH=${!U2UP_MACH_BRANCH_var}
+echo "U2UP_MACH_BRANCH=${U2UP_MACH_BRANCH}"
+
+U2UP_MACH_REPO_URL_var=${U2UP_MACHINE_PREFIX}_MACH_REPO_URL
+U2UP_MACH_REPO_URL=${!U2UP_MACH_REPO_URL_var}
+echo "U2UP_MACH_REPO_URL=${U2UP_MACH_REPO_URL}"
+
+if [ -z "${U2UP_BSP_LAYER_NAME}" ] && [ "${U2UP_MACHINE/#qemu/}" = "${U2UP_MACHINE}" ]; then
+	echo $pre"ERROR - Unknown MACHINE (check: distro-conf/machines-conf)!"
+	echo
+	usage_help
+	exit 1
+fi
+#exit
 
 while [[ $# > 0 ]]
 do
 	case $1 in
-	qemux86|raspberrypi3-64)
-		if [ -z "$COMMAND" ] && [ -z "$MACHINE" ]; then
-			MACHINE=$1
-			case $MACHINE in
-			qemux86)
-				BSP_LAYER_NAME=""
-				MACH=""
-				MACH_BRANCH=""
-				MACH_REPO_URL=""
-				;;
-			intel-corei7-64)
-				BSP_LAYER_NAME="intel"
-				MACH="meta-${BSP_LAYER_NAME}"
-				MACH_BRANCH="${POKY_BRANCH}"
-				MACH_REPO_URL="git://git.yoctoproject.org/${MACH}"
-				;;
-			raspberrypi3-64)
-				BSP_LAYER_NAME="raspberrypi"
-				MACH="meta-${BSP_LAYER_NAME}"
-				MACH_BRANCH="${POKY_BRANCH}"
-				MACH_REPO_URL="git://git.yoctoproject.org/${MACH}"
-				;;
-			esac
-		else
-			echo $pre"ERROR - Wrong syntax!"
-			echo
-			usage_help
-			exit 1
-		fi
-		;;
 	prepare|build|bbsh)
-		if [ -n "$MACHINE" ] && [ -z "$COMMAND" ]; then
-			COMMAND=$1
+		if [ -n "$U2UP_MACHINE" ] && [ -z "$U2UP_COMMAND" ]; then
+			U2UP_COMMAND=$1
 		else
 			echo $pre"ERROR - Wrong syntax!"
 			echo
@@ -90,15 +95,8 @@ do
 	shift # to the next token, if any
 done
 
-if [ -z "$COMMAND" ]; then
+if [ -z "$U2UP_COMMAND" ]; then
 	echo $pre"ERROR - Missing COMMAND!"
-	echo
-	usage_help
-	exit 1
-fi
-
-if [ -z "$MACHINE" ]; then
-	echo $pre"ERROR - Missing MACHINE!"
 	echo
 	usage_help
 	exit 1
@@ -110,7 +108,7 @@ pushd $WDIR &> /dev/null
 # Check downloads mirror!
 function check_downloads ()
 {
-	if [ ! -d "$DOWNLOADS" ]; then
+	if [ ! -d "$U2UP_DOWNLOADS" ]; then
 		return 1
 	fi
 	return 0
@@ -143,9 +141,9 @@ function check_subdir ()
 			echo $pre"ERROR - check_subdir () Git branch test checkout error - Remove: ${SUBTREE}_${BRANCH}!"
 			rm -rf ${SUBTREE}_$BRANCH
 		else
-			if [ ! -f "${DOWNLOADS}/${SUBTREE}_${BRANCH}_git.tar.gz" ]; then
-				echo $pre"Archiving \"${SUBTREE}_${BRANCH}\" into \"${DOWNLOADS}/${SUBTREE}_${BRANCH}_git.tar.gz\"!"
-				tar czf ${DOWNLOADS}/${SUBTREE}_${BRANCH}_git.tar.gz ${SUBTREE}_$BRANCH
+			if [ ! -f "${U2UP_DOWNLOADS}/${SUBTREE}_${BRANCH}_git.tar.gz" ]; then
+				echo $pre"Archiving \"${SUBTREE}_${BRANCH}\" into \"${U2UP_DOWNLOADS}/${SUBTREE}_${BRANCH}_git.tar.gz\"!"
+				tar czf ${U2UP_DOWNLOADS}/${SUBTREE}_${BRANCH}_git.tar.gz ${SUBTREE}_$BRANCH
 				if [ $? -ne 0 ]; then
 					echo $pre"WARNING - prepare failed (tar czf: ${SUBTREE}_${BRANCH} subdir not archived)!"
 					echo
@@ -176,9 +174,9 @@ function prepare_subdir ()
 
 	echo $pre"Preparing \"${SUBTREE}_${BRANCH}\" subdir (from \"$REPO_URL\")!"
 	if [ ! -d "${SUBTREE}" ] && [ ! -d "${SUBTREE}_${BRANCH}" ]; then
-		if [ -f "${DOWNLOADS}/${SUBTREE}_${BRANCH}_git.tar.gz" ]; then
-			echo $pre"Extracting \"${SUBTREE}\" from \"${DOWNLOADS}/${SUBTREE}_${BRANCH}_git.tar.gz\"!"
-			tar xzf ${DOWNLOADS}/${SUBTREE}_${BRANCH}_git.tar.gz
+		if [ -f "${U2UP_DOWNLOADS}/${SUBTREE}_${BRANCH}_git.tar.gz" ]; then
+			echo $pre"Extracting \"${SUBTREE}\" from \"${U2UP_DOWNLOADS}/${SUBTREE}_${BRANCH}_git.tar.gz\"!"
+			tar xzf ${U2UP_DOWNLOADS}/${SUBTREE}_${BRANCH}_git.tar.gz
 			ret=$?
 			if [ $ret -ne 0 ]; then
 				echo $pre"ERROR - prepare failed (tar xzf: ${SUBTREE}_${BRANCH} subdir not ok)!"
@@ -213,13 +211,13 @@ function prepare_machine ()
 	check_downloads
 	ret=$?
 	if [ $ret -ne 0 ]; then
-		echo $pre"Creating fresh \"${DOWNLOADS}\" directory!"
-		mkdir -p $DOWNLOADS
+		echo $pre"Creating fresh \"${U2UP_DOWNLOADS}\" directory!"
+		mkdir -p $U2UP_DOWNLOADS
 	fi
-	check_subdir $POKY $POKY_BRANCH
+	check_subdir $U2UP_POKY $U2UP_POKY_BRANCH
 	ret=$?
 	if [ $ret -ne 0 ]; then
-		prepare_subdir $POKY $POKY_BRANCH $POKY_REPO_URL
+		prepare_subdir $U2UP_POKY $U2UP_POKY_BRANCH $U2UP_POKY_REPO_URL
 		ret=$?
 		if [ $ret -ne 0 ]; then
 			echo $pre"ERROR - Failed!"
@@ -227,10 +225,10 @@ function prepare_machine ()
 			return $ret
 		fi
 	fi
-	check_subdir $MACH $MACH_BRANCH
+	check_subdir $U2UP_MACH $U2UP_MACH_BRANCH
 	ret=$?
 	if [ $ret -ne 0 ]; then
-		prepare_subdir $MACH $MACH_BRANCH $MACH_REPO_URL
+		prepare_subdir $U2UP_MACH $U2UP_MACH_BRANCH $U2UP_MACH_REPO_URL
 		ret=$?
 	fi
 
@@ -252,14 +250,14 @@ function build_machine ()
 		echo
 		return $ret
 	fi
-	check_subdir $POKY $POKY_BRANCH
+	check_subdir $U2UP_POKY $U2UP_POKY_BRANCH
 	ret=$?
 	if [ $ret -ne 0 ]; then
 		echo $pre"ERROR - Project not yet prepared (poky branch not availabe)!"
 		echo
 		return $ret
 	fi
-	check_subdir $MACH $MACH_BRANCH
+	check_subdir $U2UP_MACH $U2UP_MACH_BRANCH
 	ret=$?
 	if [ $ret -ne 0 ]; then
 		echo $pre"ERROR - Project not yet prepared (machine branch not availabe)!"
@@ -267,17 +265,17 @@ function build_machine ()
 		return $ret
 	fi
 
-	echo $pre"Setting build environment for \"${MACHINE}\"!"
-	source ${POKY}_${POKY_BRANCH}/oe-init-build-env u2up_${POKY_BRANCH}/build.$MACHINE
+	echo $pre"Setting build environment for \"${U2UP_MACHINE}\"!"
+	source ${U2UP_POKY}_${U2UP_POKY_BRANCH}/oe-init-build-env u2up_${U2UP_POKY_BRANCH}/build.$U2UP_MACHINE
 
-	export YOCTO_BRANCH="${POKY_BRANCH}"
+	export YOCTO_BRANCH="${U2UP_POKY_BRANCH}"
 	export BB_ENV_EXTRAWHITE="$BB_ENV_EXTRAWHITE YOCTO_BRANCH"
 
 	if [ -n "${1}" ] && [ "${1}" == "bbsh" ]; then
-		echo $pre"Entering U2UP bitbake shell for \"${MACHINE}\"!"
+		echo $pre"Entering U2UP bitbake shell for \"${U2UP_MACHINE}\"!"
 		bash
 	else
-		echo $pre"Building U2UP image for \"${MACHINE}\"!"
+		echo $pre"Building U2UP image for \"${U2UP_MACHINE}\"!"
 		bitbake u2up-image-full-cmdline
 	fi
 	ret=$?
@@ -289,13 +287,13 @@ function build_machine ()
 
 # Execute command!
 ret=1
-case $COMMAND in
+case $U2UP_COMMAND in
 prepare)
 	prepare_machine
 	ret=$?
 	;;
 build|bbsh)
-	build_machine $COMMAND
+	build_machine $U2UP_COMMAND
 	ret=$?
 	;;
 esac
