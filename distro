@@ -36,7 +36,7 @@ if [ -z "$U2UP_MACHINE" ]; then
 	exit 1
 fi
 
-echo "U2UP_MACHINE=${U2UP_MACHINE}"
+#echo "U2UP_MACHINE=${U2UP_MACHINE}"
 U2UP_MACHINE_PREFIX=${U2UP_MACHINE//-/_}
 #echo "U2UP_MACHINE_PREFIX=${U2UP_MACHINE_PREFIX}"
 
@@ -46,19 +46,19 @@ source distro-conf/machines-conf
 
 U2UP_BSP_LAYER_NAME_var=${U2UP_MACHINE_PREFIX}_BSP_LAYER_NAME
 U2UP_BSP_LAYER_NAME=${!U2UP_BSP_LAYER_NAME_var}
-echo "U2UP_BSP_LAYER_NAME=${U2UP_BSP_LAYER_NAME}"
+#echo "U2UP_BSP_LAYER_NAME=${U2UP_BSP_LAYER_NAME}"
 
 U2UP_MACH_var=${U2UP_MACHINE_PREFIX}_MACH
 U2UP_MACH=${!U2UP_MACH_var}
-echo "U2UP_MACH=${U2UP_MACH}"
+#echo "U2UP_MACH=${U2UP_MACH}"
 
 U2UP_MACH_BRANCH_var=${U2UP_MACHINE_PREFIX}_MACH_BRANCH
 U2UP_MACH_BRANCH=${!U2UP_MACH_BRANCH_var}
-echo "U2UP_MACH_BRANCH=${U2UP_MACH_BRANCH}"
+#echo "U2UP_MACH_BRANCH=${U2UP_MACH_BRANCH}"
 
 U2UP_MACH_REPO_URL_var=${U2UP_MACHINE_PREFIX}_MACH_REPO_URL
 U2UP_MACH_REPO_URL=${!U2UP_MACH_REPO_URL_var}
-echo "U2UP_MACH_REPO_URL=${U2UP_MACH_REPO_URL}"
+#echo "U2UP_MACH_REPO_URL=${U2UP_MACH_REPO_URL}"
 
 if [ -z "${U2UP_BSP_LAYER_NAME}" ] && [ "${U2UP_MACHINE/#qemu/}" = "${U2UP_MACHINE}" ]; then
 	echo $pre"ERROR - Unknown MACHINE (check: distro-conf/machines-conf)!"
@@ -66,7 +66,6 @@ if [ -z "${U2UP_BSP_LAYER_NAME}" ] && [ "${U2UP_MACHINE/#qemu/}" = "${U2UP_MACHI
 	usage_help
 	exit 1
 fi
-#exit
 
 while [[ $# > 0 ]]
 do
@@ -123,15 +122,17 @@ function check_subdir ()
 
 	# Check if no args (first arg empty) - dummy check; not an error:
 	if [ -z "$SUBTREE" ]; then
+		echo $pre"Path: NONE - already provired by Poky!"
 		return 0
 	fi
 
 	# Chech second arg (if first arg exists, the second has to exist too):
 	if [ -z "$BRANCH" ]; then
-		echo $pre"ERROR - check_subdir () Invalid params!"
+		echo $pre"ERROR - check_subdir () Missing second (BRANCH) param!"
 		return $ret
 	fi
 
+	echo $pre"Path: ${SUBTREE}_${BRANCH}"
 	if [ -d "${SUBTREE}_${BRANCH}" ]; then
 		pushd ${SUBTREE}_${BRANCH} &> /dev/null
 		git checkout $BRANCH &> /dev/null
@@ -203,6 +204,47 @@ function prepare_subdir ()
 	return $ret
 }
 
+# Generate buildir!
+function generate_buildir ()
+{
+	ret=1
+	MACH_NAME=$1
+	MACH_LAYER=$2
+	MACH_BRANCH=$3
+
+	# Check if no args (first arg empty) - error:
+	if [ -z "$MACH_NAME" ]; then
+		echo $pre"generate_buildir: ERROR - unspecified machine!"
+		return $ret
+	fi
+
+	# Check if empty layer name - not an error (it's qemu...):
+	if [ -z "$MACH_LAYER" ]; then
+		MACH_BRANCH=$U2UP_POKY_BRANCH
+	fi
+
+	#echo "MACH_NAME=${MACH_NAME}"
+	#echo "MACH_LAYER=${MACH_LAYER}"
+	#echo "MACH_BRANCH=${MACH_BRANCH}"
+
+	MACH_BUILDIR="u2up_${MACH_BRANCH}/build.${MACH_NAME}_${U2UP_POKY_BRANCH}"
+	echo $pre"Build directory: ${MACH_BUILDIR}"
+	mkdir -p ${MACH_BUILDIR}/conf
+	echo "# THIS IS GENERATED FILE - DO NOT MAKE CHANGES HERE!" > ${MACH_BUILDIR}/conf/local.conf
+	cat u2up_${MACH_BRANCH}/conf/build_local.conf_template >> ${MACH_BUILDIR}/conf/local.conf
+	echo "MACHINE ??= \"${MACH_NAME}\"" >> ${MACH_BUILDIR}/conf/local.conf
+	cp -p u2up_${MACH_BRANCH}/conf/templateconf.cfg ${MACH_BUILDIR}/conf/
+	echo "# THIS IS GENERATED FILE - DO NOT MAKE CHANGES HERE!" > ${MACH_BUILDIR}/conf/bblayers.conf
+	cat u2up_${MACH_BRANCH}/conf/build_bblayers.conf_template >> ${MACH_BUILDIR}/conf/bblayers.conf
+	if [ -n "$MACH_LAYER" ]; then
+		echo "  \${YOCTODIR}/meta-raspberrypi_${MACH_BRANCH} \\" >> ${MACH_BUILDIR}/conf/bblayers.conf
+	fi
+	echo "  \"" >> ${MACH_BUILDIR}/conf/bblayers.conf
+
+	ret=0
+	return $ret
+}
+
 # Prepare tree for specific machine!
 function prepare_machine ()
 {
@@ -214,6 +256,8 @@ function prepare_machine ()
 		echo $pre"Creating fresh \"${U2UP_DOWNLOADS}\" directory!"
 		mkdir -p $U2UP_DOWNLOADS
 	fi
+
+	echo $pre"Prepare yocto poky reference for \"${U2UP_MACHINE}\"!"
 	check_subdir $U2UP_POKY $U2UP_POKY_BRANCH
 	ret=$?
 	if [ $ret -ne 0 ]; then
@@ -225,11 +269,22 @@ function prepare_machine ()
 			return $ret
 		fi
 	fi
+
+	echo $pre"Prepare machine layer for \"${U2UP_MACHINE}\"!"
 	check_subdir $U2UP_MACH $U2UP_MACH_BRANCH
 	ret=$?
 	if [ $ret -ne 0 ]; then
 		prepare_subdir $U2UP_MACH $U2UP_MACH_BRANCH $U2UP_MACH_REPO_URL
 		ret=$?
+	fi
+
+	echo $pre"Prepare build tree for \"${U2UP_MACHINE}\"!"
+	generate_buildir $U2UP_MACHINE $U2UP_MACH $U2UP_MACH_BRANCH
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		echo $pre"ERROR - Failed!"
+		echo
+		return $ret
 	fi
 
 	if [ $ret -eq 0 ]; then
@@ -266,7 +321,7 @@ function build_machine ()
 	fi
 
 	echo $pre"Setting build environment for \"${U2UP_MACHINE}\"!"
-	source ${U2UP_POKY}_${U2UP_POKY_BRANCH}/oe-init-build-env u2up_${U2UP_POKY_BRANCH}/build.$U2UP_MACHINE
+	source ${U2UP_POKY}_${U2UP_POKY_BRANCH}/oe-init-build-env u2up_${U2UP_POKY_BRANCH}/build.${U2UP_MACHINE}_${U2UP_POKY_BRANCH}
 
 	export YOCTO_BRANCH="${U2UP_POKY_BRANCH}"
 	export BB_ENV_EXTRAWHITE="$BB_ENV_EXTRAWHITE YOCTO_BRANCH"
