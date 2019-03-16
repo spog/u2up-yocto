@@ -237,7 +237,7 @@ function generate_buildir ()
 	echo "# THIS IS GENERATED FILE - DO NOT MAKE CHANGES HERE!" > ${MACH_BUILDIR}/conf/bblayers.conf
 	cat ${U2UP_DIR}/conf/build_bblayers.conf_template >> ${MACH_BUILDIR}/conf/bblayers.conf
 	if [ -n "$MACH_LAYER" ]; then
-		echo "  \${YOCTODIR}/meta-raspberrypi_${MACH_BRANCH} \\" >> ${MACH_BUILDIR}/conf/bblayers.conf
+		echo "  \${YOCTODIR}/${MACH_LAYER}_${MACH_BRANCH} \\" >> ${MACH_BUILDIR}/conf/bblayers.conf
 	fi
 	echo "  \"" >> ${MACH_BUILDIR}/conf/bblayers.conf
 
