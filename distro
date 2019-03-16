@@ -298,24 +298,10 @@ function build_machine ()
 {
 	ret=1
 
-	check_downloads
+	prepare_machine
 	ret=$?
 	if [ $ret -ne 0 ]; then
-		echo $pre"ERROR - Project not yet prepared (downlads mirror not availabe)!"
-		echo
-		return $ret
-	fi
-	check_subdir $U2UP_POKY $U2UP_POKY_BRANCH
-	ret=$?
-	if [ $ret -ne 0 ]; then
-		echo $pre"ERROR - Project not yet prepared (poky branch not availabe)!"
-		echo
-		return $ret
-	fi
-	check_subdir $U2UP_MACH $U2UP_MACH_BRANCH
-	ret=$?
-	if [ $ret -ne 0 ]; then
-		echo $pre"ERROR - Project not yet prepared (machine branch not availabe)!"
+		echo $pre"ERROR - Project prepare machine FAILED!"
 		echo
 		return $ret
 	fi
