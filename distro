@@ -16,7 +16,7 @@ function usage_help ()
 {
 	echo "Usage: "$(basename  $0)" [MACHINE COMMAND] [OPTIONS]"
 	echo " MACHINE := qemux86|intel-corei7-64|raspberrypi3-64|..."
-	echo " COMMAND := prepare|build|bbsh"
+	echo " COMMAND := prepare|bbsh|bitbake [args]"
 	echo " OPTIONS := {--help|-h}"
 	echo
 	return
@@ -25,9 +25,49 @@ function usage_help ()
 pre="$(basename  $0)-u2up: "
 U2UP_OPTIONS=""
 U2UP_COMMAND=""
+U2UP_MACHINE=""
 
-U2UP_MACHINE=${1}
-shift
+while [[ $# > 0 ]]
+do
+	case $1 in
+	prepare|bbsh|bitbake)
+		if [ -n "$U2UP_MACHINE" ] && [ -z "$U2UP_COMMAND" ]; then
+			U2UP_COMMAND=$1
+		else
+			echo $pre"ERROR - Wrong syntax!"
+			echo
+			usage_help
+			exit 1
+		fi
+		;;
+	--help|-h)
+		usage_help
+		exit 0
+		;;
+	*)
+		if [ -z "$U2UP_MACHINE" ]; then
+			U2UP_MACHINE=$1
+		else
+			if [ "x$U2UP_COMMAND" != "xbitbake" ]; then
+				echo $pre"ERROR - Unknown option: "$1
+				echo
+				usage_help
+				exit 1
+			else
+				break 1
+			fi
+		fi
+		;;
+	esac
+	shift # to the next token, if any
+done
+
+if [ -z "$U2UP_COMMAND" ]; then
+	echo $pre"ERROR - Missing COMMAND!"
+	echo
+	usage_help
+	exit 1
+fi
 
 if [ -z "$U2UP_MACHINE" ]; then
 	echo $pre"ERROR - Missing MACHINE!"
@@ -62,40 +102,6 @@ U2UP_MACH_REPO_URL=${!U2UP_MACH_REPO_URL_var}
 
 if [ -z "${U2UP_BSP_LAYER_NAME}" ] && [ "${U2UP_MACHINE/#qemu/}" = "${U2UP_MACHINE}" ]; then
 	echo $pre"ERROR - Unknown MACHINE (check: distro-conf/machines-conf)!"
-	echo
-	usage_help
-	exit 1
-fi
-
-while [[ $# > 0 ]]
-do
-	case $1 in
-	prepare|build|bbsh)
-		if [ -n "$U2UP_MACHINE" ] && [ -z "$U2UP_COMMAND" ]; then
-			U2UP_COMMAND=$1
-		else
-			echo $pre"ERROR - Wrong syntax!"
-			echo
-			usage_help
-			exit 1
-		fi
-		;;
-	--help|-h)
-		usage_help
-		exit 0 
-		;;
-	*)
-		echo $pre"ERROR - Unknown option: "$1
-		echo
-		usage_help
-		exit 1
-		;;
-	esac
-	shift # to the next token, if any
-done
-
-if [ -z "$U2UP_COMMAND" ]; then
-	echo $pre"ERROR - Missing COMMAND!"
 	echo
 	usage_help
 	exit 1
@@ -316,8 +322,13 @@ function build_machine ()
 		echo $pre"Entering U2UP bitbake shell for \"${U2UP_MACHINE}\"!"
 		env PS1="bbsh|\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\W\[\033[00m\]\$ " bash --norc -i
 	else
-		echo $pre"Building U2UP image for \"${U2UP_MACHINE}\"!"
-		bitbake u2up-image-full-cmdline
+		if [ -z "${2}" ]; then
+			echo $pre"Run default bitbake command for \"${U2UP_MACHINE}\" - u2up-image-full-cmdline!"
+			bitbake u2up-image-full-cmdline
+		else
+			echo $pre"Run $@ command for \"${U2UP_MACHINE}\"!"
+			$@
+		fi
 	fi
 	ret=$?
 	if [ $ret -eq 0 ]; then
@@ -333,8 +344,8 @@ prepare)
 	prepare_machine
 	ret=$?
 	;;
-build|bbsh)
-	build_machine $U2UP_COMMAND
+bbsh|bitbake)
+	build_machine $U2UP_COMMAND $@
 	ret=$?
 	;;
 esac
