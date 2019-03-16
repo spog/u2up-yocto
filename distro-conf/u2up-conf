@@ -1,4 +1,5 @@
 # U2UP common vars:
+U2UP_DIR="u2up"
 U2UP_DOWNLOADS="downloads"
 
 # U2UP Poky vars:

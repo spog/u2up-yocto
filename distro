@@ -227,15 +227,15 @@ function generate_buildir ()
 	#echo "MACH_LAYER=${MACH_LAYER}"
 	#echo "MACH_BRANCH=${MACH_BRANCH}"
 
-	MACH_BUILDIR="u2up_${MACH_BRANCH}/build.${MACH_NAME}_${U2UP_POKY_BRANCH}"
+	MACH_BUILDIR="${U2UP_DIR}/build.${MACH_NAME}_${U2UP_POKY_BRANCH}"
 	echo $pre"Build directory: ${MACH_BUILDIR}"
 	mkdir -p ${MACH_BUILDIR}/conf
 	echo "# THIS IS GENERATED FILE - DO NOT MAKE CHANGES HERE!" > ${MACH_BUILDIR}/conf/local.conf
-	cat u2up_${MACH_BRANCH}/conf/build_local.conf_template >> ${MACH_BUILDIR}/conf/local.conf
+	cat ${U2UP_DIR}/conf/build_local.conf_template >> ${MACH_BUILDIR}/conf/local.conf
 	echo "MACHINE ??= \"${MACH_NAME}\"" >> ${MACH_BUILDIR}/conf/local.conf
-	cp -p u2up_${MACH_BRANCH}/conf/templateconf.cfg ${MACH_BUILDIR}/conf/
+	cp -p ${U2UP_DIR}/conf/templateconf.cfg ${MACH_BUILDIR}/conf/
 	echo "# THIS IS GENERATED FILE - DO NOT MAKE CHANGES HERE!" > ${MACH_BUILDIR}/conf/bblayers.conf
-	cat u2up_${MACH_BRANCH}/conf/build_bblayers.conf_template >> ${MACH_BUILDIR}/conf/bblayers.conf
+	cat ${U2UP_DIR}/conf/build_bblayers.conf_template >> ${MACH_BUILDIR}/conf/bblayers.conf
 	if [ -n "$MACH_LAYER" ]; then
 		echo "  \${YOCTODIR}/meta-raspberrypi_${MACH_BRANCH} \\" >> ${MACH_BUILDIR}/conf/bblayers.conf
 	fi
@@ -321,14 +321,15 @@ function build_machine ()
 	fi
 
 	echo $pre"Setting build environment for \"${U2UP_MACHINE}\"!"
-	source ${U2UP_POKY}_${U2UP_POKY_BRANCH}/oe-init-build-env u2up_${U2UP_POKY_BRANCH}/build.${U2UP_MACHINE}_${U2UP_POKY_BRANCH}
+	source ${U2UP_POKY}_${U2UP_POKY_BRANCH}/oe-init-build-env ${U2UP_DIR}/build.${U2UP_MACHINE}_${U2UP_POKY_BRANCH}
 
 	export YOCTO_BRANCH="${U2UP_POKY_BRANCH}"
 	export BB_ENV_EXTRAWHITE="$BB_ENV_EXTRAWHITE YOCTO_BRANCH"
 
 	if [ -n "${1}" ] && [ "${1}" == "bbsh" ]; then
 		echo $pre"Entering U2UP bitbake shell for \"${U2UP_MACHINE}\"!"
-		bash
+		env PS1="${pre}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\W\[\033[00m\]\$ " bash --norc -i
+		#bash --rcfile <(cat ~/.bashrc; echo "PS1='$pre$PS1'") -i
 	else
 		echo $pre"Building U2UP image for \"${U2UP_MACHINE}\"!"
 		bitbake u2up-image-full-cmdline
