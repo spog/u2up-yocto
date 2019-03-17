@@ -27,9 +27,11 @@ issue the following two sample commands from the project TOPDIR:
 
 $ ./distro qemux86 prepare
 
-$ ./distro qemux86 build
+$ ./distro qemux86 bbsh
 
-Find built images in "u2up/build.qemux86/tmp/deploy/images/qemux86/" for example:
+$ ./distro qemux86 bitbake [bb_args]
+
+Find built images in "u2up/build.qemux86_thud/tmp/deploy/images/qemux86/" for example:
 - bzImage -> bzImage--4.14.76+git0+3435617380_2c5caa7e84-r0-qemux86-20181125204414.bin
 - bzImage--4.14.76+git0+3435617380_2c5caa7e84-r0-qemux86-20181125204414.bin
 - bzImage-qemux86.bin -> bzImage--4.14.76+git0+3435617380_2c5caa7e84-r0-qemux86-20181125204414.bin
