@@ -1,0 +1,48 @@
+From d5fc328887bc7a60700737bc33528feb5b4208bc Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Samo=20Poga=C4=8Dnik?= <samo_pogacnik@t-2.net>
+Date: Thu, 21 Mar 2019 20:03:09 +0100
+Subject: [PATCH] sd: TEST_UNIT_READY 3-times - "media_not_present"
+
+If the drive has indicated to us that it doesn't have any media in
+it, don't bother after the third poll indicating "media_not_present".
+Previously we gave up immediately after the first indication, however
+two retries were still available for orther cases.
+
+This change solved a problem of mounting the root filesystem via the
+"root=PARTUUID=..." kernel directive, while booting the system from
+the USB flash drive (18a5:0302 Verbatim).
+Using the "root=/dev/sd.." directive, disk partitions are discovered
+and the root filesystem mounts without errors. But, in the error case
+(root=PARTUUID=...), partitions never get discovered and consequetly
+the root filesystem never mounts.
+---
+ drivers/scsi/sd.c | 12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/scsi/sd.c b/drivers/scsi/sd.c
+index 39754cc90043..7f391164f646 100644
+--- a/drivers/scsi/sd.c
++++ b/drivers/scsi/sd.c
+@@ -2101,10 +2101,16 @@ sd_spinup_disk(struct scsi_disk *sdkp)
+ 			/*
+ 			 * If the drive has indicated to us that it
+ 			 * doesn't have any media in it, don't bother
+-			 * with any more polling.
++			 * after the third poll.
+ 			 */
+-			if (media_not_present(sdkp, &sshdr))
+-				return;
++			if (media_not_present(sdkp, &sshdr)) {
++				retries++;
++				if (retries < 3) {
++					sdkp->media_present = 1;
++					continue;
++				} else
++					return;
++			}
+ 
+ 			if (the_result)
+ 				sense_valid = scsi_sense_valid(&sshdr);
+-- 
+2.17.1
+
