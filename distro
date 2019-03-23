@@ -316,9 +316,10 @@ function build_machine ()
 	echo $pre"Setting build environment for \"${U2UP_MACHINE}\"!"
 	source ${U2UP_POKY}_${U2UP_POKY_BRANCH}/oe-init-build-env ${U2UP_DIR}/build.${U2UP_MACHINE}_${U2UP_POKY_BRANCH}
 
-	export YOCTO_BRANCH="${U2UP_POKY_BRANCH}"
-	export YOCTO_SHARED="${U2UP_YOCTO_SHARED}"
-	export BB_ENV_EXTRAWHITE="$BB_ENV_EXTRAWHITE YOCTO_BRANCH YOCTO_SHARED"
+	export U2UP_POKY_BRANCH
+	export U2UP_YOCTO_SHARED
+	export U2UP_MACH_BUILDIR="${MACH_BUILDIR}"
+	export BB_ENV_EXTRAWHITE="$BB_ENV_EXTRAWHITE U2UP_POKY_BRANCH U2UP_YOCTO_SHARED U2UP_MACH_BUILDIR"
 
 	if [ -n "${1}" ] && [ "${1}" == "bbsh" ]; then
 		echo $pre"Entering U2UP bitbake shell for \"${U2UP_MACHINE}\"!"
