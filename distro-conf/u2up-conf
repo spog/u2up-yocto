@@ -1,6 +1,6 @@
 # U2UP common vars:
 U2UP_DIR="u2up"
-U2UP_DOWNLOADS="downloads"
+U2UP_YOCTO_SHARED="${HOME}/u2up-yocto-shared"
 
 # U2UP Poky vars:
 U2UP_POKY="poky"
