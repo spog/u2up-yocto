@@ -1,0 +1,24 @@
+# Poky repo:
+poky_NAME="poky"
+poky_REPO_URL="git://git.yoctoproject.org/${poky_NAME}"
+poky_BRANCH="thud"
+poky_VERSION="${poky_BRANCH}-20.0.1"
+
+# Meta-intel repo:
+meta_intel_NAME="meta-intel"
+meta_intel_REPO_URL="git://git.yoctoproject.org/${meta_intel_NAME}"
+meta_intel_BRANCH="${poky_BRANCH}"
+meta_intel_VERSION="${poky_VERSION}"
+
+# Meta-raspberrpi repo:
+meta_raspberrypi_NAME="meta-raspberrypi"
+meta_raspberrypi_REPO_URL="git://git.yoctoproject.org/${meta_raspberrypi_NAME}"
+meta_raspberrypi_BRANCH="${poky_BRANCH}"
+meta_raspberrypi_VERSION="${poky_VERSION}"
+
+# Meta-openembedded repo:
+meta_openembedded_NAME="meta-openembedded"
+meta_openembedded_REPO_URL="git://git.openembedded.org/${meta_openembedded_NAME}"
+meta_openembedded_BRANCH="${poky_BRANCH}"
+meta_openembedded_VERSION="${poky_VERSION}"
+

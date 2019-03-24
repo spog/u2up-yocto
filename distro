@@ -80,28 +80,43 @@ fi
 U2UP_MACHINE_PREFIX=${U2UP_MACHINE//-/_}
 #echo "U2UP_MACHINE_PREFIX=${U2UP_MACHINE_PREFIX}"
 
+U2UP_REPOS_DIR="repos"
+source distro-conf/repos-conf
+U2UP_POKY="${poky_NAME}"
+#echo "U2UP_POKY=${U2UP_POKY}"
+U2UP_POKY_REPO_URL="${poky_REPO_URL}"
+#echo "U2UP_POKY_REPO_URL=${U2UP_POKY_REPO_URL}"
+U2UP_POKY_BRANCH="${poky_BRANCH}"
+#echo "U2UP_POKY_BRANCH=${U2UP_POKY_BRANCH}"
+U2UP_POKY_VERSION="${poky_VERSION}"
+#echo "U2UP_POKY_VERSION=${U2UP_POKY_VERSION}"
+
 source distro-conf/u2up-conf
 U2UP_DOWNLOADS="${U2UP_YOCTO_SHARED}/downloads"
 
 source distro-conf/machines-conf
 
-U2UP_BSP_LAYER_NAME_var=${U2UP_MACHINE_PREFIX}_BSP_LAYER_NAME
-U2UP_BSP_LAYER_NAME=${!U2UP_BSP_LAYER_NAME_var}
-#echo "U2UP_BSP_LAYER_NAME=${U2UP_BSP_LAYER_NAME}"
+U2UP_MACH_LAYER_NAME_var=${U2UP_MACHINE_PREFIX}_MACH_LAYER_NAME
+U2UP_MACH_LAYER_NAME=${!U2UP_MACH_LAYER_NAME_var}
+#echo "U2UP_MACH_LAYER_NAME=${U2UP_MACH_LAYER_NAME}"
 
-U2UP_MACH_var=${U2UP_MACHINE_PREFIX}_MACH
-U2UP_MACH=${!U2UP_MACH_var}
-#echo "U2UP_MACH=${U2UP_MACH}"
+U2UP_MACH_LAYER_PREFIX=${U2UP_MACH_LAYER_NAME//-/_}
+#echo "U2UP_MACH_LAYER_PREFIX=${U2UP_MACH_LAYER_PREFIX}"
 
-U2UP_MACH_BRANCH_var=${U2UP_MACHINE_PREFIX}_MACH_BRANCH
-U2UP_MACH_BRANCH=${!U2UP_MACH_BRANCH_var}
-#echo "U2UP_MACH_BRANCH=${U2UP_MACH_BRANCH}"
-
-U2UP_MACH_REPO_URL_var=${U2UP_MACHINE_PREFIX}_MACH_REPO_URL
+U2UP_MACH_REPO_URL_var=${U2UP_MACH_LAYER_PREFIX}_REPO_URL
 U2UP_MACH_REPO_URL=${!U2UP_MACH_REPO_URL_var}
 #echo "U2UP_MACH_REPO_URL=${U2UP_MACH_REPO_URL}"
 
-if [ -z "${U2UP_BSP_LAYER_NAME}" ] && [ "${U2UP_MACHINE/#qemu/}" = "${U2UP_MACHINE}" ]; then
+U2UP_MACH_BRANCH_var=${U2UP_MACH_LAYER_PREFIX}_BRANCH
+U2UP_MACH_BRANCH=${!U2UP_MACH_BRANCH_var}
+#echo "U2UP_MACH_BRANCH=${U2UP_MACH_BRANCH}"
+
+U2UP_MACH_VERSION_var=${U2UP_MACH_LAYER_PREFIX}_VERSION
+U2UP_MACH_VERSION=${!U2UP_MACH_VERSION_var}
+#echo "U2UP_MACH_VERSION=${U2UP_MACH_VERSION}"
+echo
+
+if [ -z "${U2UP_MACH_LAYER_NAME}" ] && [ "${U2UP_MACHINE/#qemu/}" = "${U2UP_MACHINE}" ]; then
 	echo $pre"ERROR - Unknown MACHINE (check: distro-conf/machines-conf)!"
 	echo
 	usage_help
@@ -133,29 +148,36 @@ function check_subdir ()
 		return 0
 	fi
 
-	# Chech second arg (if first arg exists, the second has to exist too):
+	# Check second arg (if first arg exists, the second has to exist too):
 	if [ -z "$BRANCH" ]; then
 		echo $pre"ERROR - check_subdir () Missing second (BRANCH) param!"
 		return $ret
 	fi
 
-	echo $pre"Path: ${SUBTREE}_${BRANCH}"
-	if [ -d "${SUBTREE}_${BRANCH}" ]; then
-		pushd ${SUBTREE}_${BRANCH} &> /dev/null
+	# Check presence of the U2UP_REPOS_DIR (if not presend; then create):
+	if [ ! -d "${U2UP_REPOS_DIR}" ]; then
+		mkdir -p $U2UP_REPOS_DIR
+	fi
+
+	echo $pre"Path: ${U2UP_REPOS_DIR}/${SUBTREE}_${BRANCH}"
+	if [ -d "${U2UP_REPOS_DIR}/${SUBTREE}_${BRANCH}" ]; then
+		pushd ${U2UP_REPOS_DIR}/${SUBTREE}_${BRANCH} &> /dev/null
 		git checkout $BRANCH &> /dev/null
 		ret=$?
 		popd &> /dev/null
 		if [ $ret -ne 0 ]; then
-			echo $pre"ERROR - check_subdir () Git branch test checkout error - Remove: ${SUBTREE}_${BRANCH}!"
-			rm -rf ${SUBTREE}_$BRANCH
+			echo $pre"ERROR - check_subdir () Git branch test checkout error - Remove: ${U2UP_REPOS_DIR}/${SUBTREE}_${BRANCH}!"
+			rm -rf ${U2UP_REPOS_DIR}/${SUBTREE}_$BRANCH
 		else
 			if [ ! -f "${U2UP_DOWNLOADS}/${SUBTREE}_${BRANCH}_git.tar.gz" ]; then
 				echo $pre"Archiving \"${SUBTREE}_${BRANCH}\" into \"${U2UP_DOWNLOADS}/${SUBTREE}_${BRANCH}_git.tar.gz\"!"
+				pushd ${U2UP_REPOS_DIR} &> /dev/null
 				tar czf ${U2UP_DOWNLOADS}/${SUBTREE}_${BRANCH}_git.tar.gz ${SUBTREE}_$BRANCH
 				if [ $? -ne 0 ]; then
 					echo $pre"WARNING - prepare failed (tar czf: ${SUBTREE}_${BRANCH} subdir not archived)!"
 					echo
 				fi
+				popd &> /dev/null
 			fi
 		fi
 	fi
@@ -180,7 +202,13 @@ function prepare_subdir ()
 		return $ret
 	fi
 
-	echo $pre"Preparing \"${SUBTREE}_${BRANCH}\" subdir (from \"$REPO_URL\")!"
+	# Check presence of the U2UP_REPOS_DIR (if not presend; then create):
+	if [ ! -d "${U2UP_REPOS_DIR}" ]; then
+		mkdir -p $U2UP_REPOS_DIR
+	fi
+
+	echo $pre"Preparing \"${U2UP_REPOS_DIR}/${SUBTREE}_${BRANCH}\" subdir (from \"$REPO_URL\")!"
+	pushd ${U2UP_REPOS_DIR} &> /dev/null
 	if [ ! -d "${SUBTREE}" ] && [ ! -d "${SUBTREE}_${BRANCH}" ]; then
 		if [ -f "${U2UP_DOWNLOADS}/${SUBTREE}_${BRANCH}_git.tar.gz" ]; then
 			echo $pre"Extracting \"${SUBTREE}\" from \"${U2UP_DOWNLOADS}/${SUBTREE}_${BRANCH}_git.tar.gz\"!"
@@ -208,6 +236,7 @@ function prepare_subdir ()
 		check_subdir $SUBTREE $BRANCH
 		ret=$?
 	fi
+	popd &> /dev/null
 	return $ret
 }
 
@@ -244,7 +273,7 @@ function generate_buildir ()
 	echo "# THIS IS GENERATED FILE - DO NOT MAKE CHANGES HERE!" > ${MACH_BUILDIR}/conf/bblayers.conf
 	cat ${U2UP_DIR}/conf/build_bblayers.conf_template >> ${MACH_BUILDIR}/conf/bblayers.conf
 	if [ -n "$MACH_LAYER" ]; then
-		echo "  \${YOCTODIR}/${MACH_LAYER}_${MACH_BRANCH} \\" >> ${MACH_BUILDIR}/conf/bblayers.conf
+		echo "  \${YOCTODIR}/${U2UP_REPOS_DIR}/${MACH_LAYER}_${MACH_BRANCH} \\" >> ${MACH_BUILDIR}/conf/bblayers.conf
 	fi
 	echo "  \"" >> ${MACH_BUILDIR}/conf/bblayers.conf
 
@@ -278,15 +307,15 @@ function prepare_machine ()
 	fi
 
 	echo $pre"Prepare machine layer for \"${U2UP_MACHINE}\"!"
-	check_subdir $U2UP_MACH $U2UP_MACH_BRANCH
+	check_subdir $U2UP_MACH_LAYER_NAME $U2UP_MACH_BRANCH
 	ret=$?
 	if [ $ret -ne 0 ]; then
-		prepare_subdir $U2UP_MACH $U2UP_MACH_BRANCH $U2UP_MACH_REPO_URL
+		prepare_subdir $U2UP_MACH_LAYER_NAME $U2UP_MACH_BRANCH $U2UP_MACH_REPO_URL
 		ret=$?
 	fi
 
 	echo $pre"Prepare build tree for \"${U2UP_MACHINE}\"!"
-	generate_buildir $U2UP_MACHINE $U2UP_MACH $U2UP_MACH_BRANCH
+	generate_buildir $U2UP_MACHINE $U2UP_MACH_LAYER_NAME $U2UP_MACH_BRANCH
 	ret=$?
 	if [ $ret -ne 0 ]; then
 		echo $pre"ERROR - Failed!"
@@ -316,10 +345,11 @@ function build_machine ()
 	echo $pre"Setting build environment for \"${U2UP_MACHINE}\"!"
 	source ${U2UP_POKY}_${U2UP_POKY_BRANCH}/oe-init-build-env ${U2UP_DIR}/build.${U2UP_MACHINE}_${U2UP_POKY_BRANCH}
 
+	export U2UP_REPOS_DIR
 	export U2UP_POKY_BRANCH
 	export U2UP_YOCTO_SHARED
 	export U2UP_MACH_BUILDIR="${MACH_BUILDIR}"
-	export BB_ENV_EXTRAWHITE="$BB_ENV_EXTRAWHITE U2UP_POKY_BRANCH U2UP_YOCTO_SHARED U2UP_MACH_BUILDIR"
+	export BB_ENV_EXTRAWHITE="$BB_ENV_EXTRAWHITE U2UP_REPOS_DIR U2UP_POKY_BRANCH U2UP_YOCTO_SHARED U2UP_MACH_BUILDIR"
 
 	if [ -n "${1}" ] && [ "${1}" == "bbsh" ]; then
 		echo $pre"Entering U2UP bitbake shell for \"${U2UP_MACHINE}\"!"
