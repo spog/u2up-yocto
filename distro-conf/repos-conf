@@ -1,24 +1,35 @@
 # Poky repo:
-poky_NAME="poky"
-poky_REPO_URL="git://git.yoctoproject.org/${poky_NAME}"
-poky_BRANCH="thud"
-poky_VERSION="${poky_BRANCH}-20.0.1"
+poky_REPO_NAME="poky"
+poky_REPO_URL="git://git.yoctoproject.org/${poky_REPO_NAME}"
+poky_REPO_BRANCH="thud"
+poky_REPO_VERSION="${poky_REPO_BRANCH}-20.0.1"
 
 # Meta-intel repo:
-meta_intel_NAME="meta-intel"
-meta_intel_REPO_URL="git://git.yoctoproject.org/${meta_intel_NAME}"
-meta_intel_BRANCH="${poky_BRANCH}"
-meta_intel_VERSION="${poky_VERSION}"
+meta_intel_REPO_NAME="meta-intel"
+meta_intel_REPO_URL="git://git.yoctoproject.org/${meta_intel_REPO_NAME}"
+meta_intel_REPO_BRANCH="${poky_REPO_BRANCH}"
+meta_intel_REPO_VERSION="${poky_REPO_VERSION}"
 
 # Meta-raspberrpi repo:
-meta_raspberrypi_NAME="meta-raspberrypi"
-meta_raspberrypi_REPO_URL="git://git.yoctoproject.org/${meta_raspberrypi_NAME}"
-meta_raspberrypi_BRANCH="${poky_BRANCH}"
-meta_raspberrypi_VERSION="${poky_VERSION}"
+meta_raspberrypi_REPO_NAME="meta-raspberrypi"
+meta_raspberrypi_REPO_URL="git://git.yoctoproject.org/${meta_raspberrypi_REPO_NAME}"
+meta_raspberrypi_REPO_BRANCH="${poky_REPO_BRANCH}"
+meta_raspberrypi_REPO_VERSION="${poky_REPO_VERSION}"
 
 # Meta-openembedded repo:
-meta_openembedded_NAME="meta-openembedded"
-meta_openembedded_REPO_URL="git://git.openembedded.org/${meta_openembedded_NAME}"
-meta_openembedded_BRANCH="${poky_BRANCH}"
-meta_openembedded_VERSION="${poky_VERSION}"
+meta_openembedded_REPO_NAME="meta-openembedded"
+meta_openembedded_REPO_URL="git://git.openembedded.org/${meta_openembedded_REPO_NAME}"
+meta_openembedded_REPO_BRANCH="${poky_REPO_BRANCH}"
+meta_openembedded_REPP_VERSION="${poky_REPO_VERSION}"
+
+# Any additional repos may be added to this file:
+# NOTE!
+# If you do not want to extend this versioned file, add your extra repos in "extra-conf" file like:
+#
+# Sample repo:
+#sample_repo_REPO_NAME="sample-repo"
+#sample_repo_REPO_URL="git://git.sample.repo/${sample_repo_NAME}"
+#sample_repo_REPO_BRANCH="${sample_branch}"
+#sample_repo_REPO_VERSION="${sample_version}"
+#
 

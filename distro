@@ -82,14 +82,14 @@ U2UP_MACHINE_PREFIX=${U2UP_MACHINE//-/_}
 
 U2UP_REPOS_DIR="repos"
 source distro-conf/repos-conf
-U2UP_POKY="${poky_NAME}"
-#echo "U2UP_POKY=${U2UP_POKY}"
+U2UP_POKY_REPO_NAME="${poky_REPO_NAME}"
+#echo "U2UP_POKY_REPO_NAME=${U2UP_POKY_REPO_NAME}"
 U2UP_POKY_REPO_URL="${poky_REPO_URL}"
 #echo "U2UP_POKY_REPO_URL=${U2UP_POKY_REPO_URL}"
-U2UP_POKY_BRANCH="${poky_BRANCH}"
-#echo "U2UP_POKY_BRANCH=${U2UP_POKY_BRANCH}"
-U2UP_POKY_VERSION="${poky_VERSION}"
-#echo "U2UP_POKY_VERSION=${U2UP_POKY_VERSION}"
+U2UP_POKY_REPO_BRANCH="${poky_REPO_BRANCH}"
+#echo "U2UP_POKY_REPO_BRANCH=${U2UP_POKY_REPO_BRANCH}"
+U2UP_POKY_REPO_VERSION="${poky_REPO_VERSION}"
+#echo "U2UP_POKY_REPO_VERSION=${U2UP_POKY_REPO_VERSION}"
 
 source distro-conf/u2up-conf
 U2UP_DOWNLOADS="${U2UP_YOCTO_SHARED}/downloads"
@@ -98,22 +98,27 @@ source distro-conf/machines-conf
 
 U2UP_MACH_LAYER_NAME_var=${U2UP_MACHINE_PREFIX}_MACH_LAYER_NAME
 U2UP_MACH_LAYER_NAME=${!U2UP_MACH_LAYER_NAME_var}
-#echo "U2UP_MACH_LAYER_NAME=${U2UP_MACH_LAYER_NAME}"
+echo "U2UP_MACH_LAYER_NAME=${U2UP_MACH_LAYER_NAME}"
+
+U2UP_MACH_LAYER_PATH_var=${U2UP_MACHINE_PREFIX}_MACH_LAYER_PATH
+U2UP_MACH_LAYER_PATH=${!U2UP_MACH_LAYER_PATH_var}
+echo "U2UP_MACH_LAYER_PATH=${U2UP_MACH_LAYER_PATH}"
 
 U2UP_MACH_LAYER_PREFIX=${U2UP_MACH_LAYER_NAME//-/_}
-#echo "U2UP_MACH_LAYER_PREFIX=${U2UP_MACH_LAYER_PREFIX}"
+echo "U2UP_MACH_LAYER_PREFIX=${U2UP_MACH_LAYER_PREFIX}"
 
 U2UP_MACH_REPO_URL_var=${U2UP_MACH_LAYER_PREFIX}_REPO_URL
 U2UP_MACH_REPO_URL=${!U2UP_MACH_REPO_URL_var}
-#echo "U2UP_MACH_REPO_URL=${U2UP_MACH_REPO_URL}"
+echo "U2UP_MACH_REPO_URL=${U2UP_MACH_REPO_URL}"
 
-U2UP_MACH_BRANCH_var=${U2UP_MACH_LAYER_PREFIX}_BRANCH
-U2UP_MACH_BRANCH=${!U2UP_MACH_BRANCH_var}
-#echo "U2UP_MACH_BRANCH=${U2UP_MACH_BRANCH}"
+U2UP_MACH_REPO_BRANCH_var=${U2UP_MACH_LAYER_PREFIX}_REPO_BRANCH
+echo "U2UP_MACH_REPO_BRANCH_var=${U2UP_MACH_REPO_BRANCH_var}"
+U2UP_MACH_REPO_BRANCH=${!U2UP_MACH_REPO_BRANCH_var}
+echo "U2UP_MACH_REPO_BRANCH=${U2UP_MACH_REPO_BRANCH}"
 
-U2UP_MACH_VERSION_var=${U2UP_MACH_LAYER_PREFIX}_VERSION
-U2UP_MACH_VERSION=${!U2UP_MACH_VERSION_var}
-#echo "U2UP_MACH_VERSION=${U2UP_MACH_VERSION}"
+U2UP_MACH_REPO_VERSION_var=${U2UP_MACH_LAYER_PREFIX}_REPO_VERSION
+U2UP_MACH_REPO_VERSION=${!U2UP_MACH_REPO_VERSION_var}
+echo "U2UP_MACH_REPO_VERSION=${U2UP_MACH_REPO_VERSION}"
 echo
 
 if [ -z "${U2UP_MACH_LAYER_NAME}" ] && [ "${U2UP_MACHINE/#qemu/}" = "${U2UP_MACHINE}" ]; then
@@ -121,6 +126,26 @@ if [ -z "${U2UP_MACH_LAYER_NAME}" ] && [ "${U2UP_MACHINE/#qemu/}" = "${U2UP_MACH
 	echo
 	usage_help
 	exit 1
+fi
+
+if [ ! -e "distro-conf/layers-conf" ]; then
+	echo $pre"ERROR - Missing file distro-conf/layers-conf!"
+	echo
+	exit 1
+fi
+source distro-conf/layers-conf
+if [ -z "${U2UP_BASE_LAYERS}" ]; then
+	echo $pre"ERROR - No layers enabled in distro-conf/layers-conf!"
+	echo
+	exit 1
+fi
+
+if [ -e "distro-conf/extras-conf" ]; then
+	source distro-conf/extras-conf
+	if [ -z "${U2UP_EXTRA_LAYERS}" ]; then
+		echo $pre"WARNING - distro-conf/extras-conf exists, but no extra layers defined!"
+		echo
+	fi
 fi
 
 WDIR=$(dirname $0)
@@ -240,6 +265,31 @@ function prepare_subdir ()
 	return $ret
 }
 
+# Add to generated bblayers.conf!
+function add_bblayers ()
+{
+	LAYERS_LIST=${!1}
+	BBLAYERS_CONF=$2
+
+	if [ -z "LAYERS_LIST" ] || [ -z "BBLAYERS_CONF" ]; then
+		echo $pre"Missing parameters"
+		return 1
+	fi
+
+	for name in ${LAYERS_LIST}; do
+		echo
+		echo "name=${name}"
+		name_prefix=${name//-/_}
+		echo "name_prefix=${name_prefix}"
+		name_layer_path_var=${name_prefix}_LAYER_PATH
+		echo "name_layer_path_var=${name_layer_path_var}"
+		name_layer_path=${!name_layer_path_var}
+		echo "name_layer_path=${name_layer_path}"
+		echo "  \${YOCTODIR}/${name_layer_path} \\" >> ${BBLAYERS_CONF}
+	done
+	return 0
+}
+
 # Generate buildir!
 function generate_buildir ()
 {
@@ -256,14 +306,14 @@ function generate_buildir ()
 
 	# Check if empty layer name - not an error (it's qemu...):
 	if [ -z "$MACH_LAYER" ]; then
-		MACH_BRANCH=$U2UP_POKY_BRANCH
+		MACH_BRANCH=$U2UP_POKY_REPO_BRANCH
 	fi
 
 	#echo "MACH_NAME=${MACH_NAME}"
 	#echo "MACH_LAYER=${MACH_LAYER}"
 	#echo "MACH_BRANCH=${MACH_BRANCH}"
 
-	MACH_BUILDIR="${U2UP_DIR}/build.${MACH_NAME}_${U2UP_POKY_BRANCH}"
+	MACH_BUILDIR="${U2UP_DIR}/build.${MACH_NAME}_${U2UP_POKY_REPO_BRANCH}"
 	echo $pre"Build directory: ${MACH_BUILDIR}"
 	mkdir -p ${MACH_BUILDIR}/conf
 	echo "# THIS IS GENERATED FILE - DO NOT MAKE CHANGES HERE!" > ${MACH_BUILDIR}/conf/local.conf
@@ -272,6 +322,10 @@ function generate_buildir ()
 	cp -p ${U2UP_DIR}/conf/templateconf.cfg ${MACH_BUILDIR}/conf/
 	echo "# THIS IS GENERATED FILE - DO NOT MAKE CHANGES HERE!" > ${MACH_BUILDIR}/conf/bblayers.conf
 	cat ${U2UP_DIR}/conf/build_bblayers.conf_template >> ${MACH_BUILDIR}/conf/bblayers.conf
+	add_bblayers U2UP_BASE_LAYERS ${MACH_BUILDIR}/conf/bblayers.conf
+	if [ -n "${U2UP_EXTRA_LAYERS}" ]; then
+		add_bblayers U2UP_EXTRA_LAYERS ${MACH_BUILDIR}/conf/bblayers.conf
+	fi
 	if [ -n "$MACH_LAYER" ]; then
 		echo "  \${YOCTODIR}/${U2UP_REPOS_DIR}/${MACH_LAYER}_${MACH_BRANCH} \\" >> ${MACH_BUILDIR}/conf/bblayers.conf
 	fi
@@ -279,6 +333,65 @@ function generate_buildir ()
 
 	ret=0
 	return $ret
+}
+
+# Prepare tree for the required layers!
+function prepare_layers ()
+{
+	ret=1
+	LAYERS_LIST=${!1}
+
+	if [ -z "LAYERS_LIST" ]; then
+		echo $pre"ERROR: Empty layers list!"
+		return 1
+	fi
+
+	for name in ${LAYERS_LIST}; do
+		echo
+#		echo "name=${name}"
+		name_prefix=${name//-/_}
+#		echo "name_prefix=${name_prefix}"
+		name_layer_repo_var=${name_prefix}_LAYER_REPO
+#		echo "name_layer_repo_var=${name_layer_repo_var}"
+		name_layer_repo=${!name_layer_repo_var}
+#		echo "name_layer_repo=${name_layer_repo}"
+		name_layer_path_var=${name_prefix}_LAYER_PATH
+#		echo "name_layer_path_var=${name_layer_path_var}"
+		name_layer_path=${!name_layer_path_var}
+#		echo "name_layer_path=${name_layer_path}"
+
+		echo $pre"Prepare repo \"${name_layer_repo}\" for layer \"${name}\""
+#		echo
+		repo_prefix=${name_layer_repo//-/_}
+#		echo "repo_prefix=${repo_prefix}"
+		repo_url_var=${repo_prefix}_REPO_URL
+#		echo "repo_url_var=${repo_url_var}"
+		repo_url=${!repo_url_var}
+#		echo "repo_url=${repo_url}"
+		repo_branch_var=${repo_prefix}_REPO_BRANCH
+#		echo "repo_branch_var=${repo_branch_var}"
+		repo_branch=${!repo_branch_var}
+#		echo "repo_branch=${repo_branch}"
+		check_subdir $name_layer_repo $repo_branch
+		ret=$?
+		if [ $ret -ne 0 ]; then
+			prepare_subdir $name_layer_repo $repo_branch $repo_url
+			ret=$?
+				if [ $ret -ne 0 ]; then
+				echo $pre"ERROR - Failed!"
+				echo
+				return $ret
+			fi
+		fi
+		if [ -d "${name_layer_path}" ]; then
+			echo $pre"Prepared ${name} layer path: ${name_layer_path}"
+		else
+			echo $pre"Missing ${name} layer path: ${name_layer_path}"
+			return 1
+		fi
+	done
+
+	return 0
 }
 
 # Prepare tree for specific machine!
@@ -293,29 +406,32 @@ function prepare_machine ()
 		mkdir -p $U2UP_DOWNLOADS
 	fi
 
-	echo $pre"Prepare yocto poky reference for \"${U2UP_MACHINE}\"!"
-	check_subdir $U2UP_POKY $U2UP_POKY_BRANCH
-	ret=$?
-	if [ $ret -ne 0 ]; then
-		prepare_subdir $U2UP_POKY $U2UP_POKY_BRANCH $U2UP_POKY_REPO_URL
-		ret=$?
-		if [ $ret -ne 0 ]; then
-			echo $pre"ERROR - Failed!"
-			echo
-			return $ret
-		fi
-	fi
+	echo $pre"Prepare base layers for \"${U2UP_MACHINE}\"!"
+	prepare_layers U2UP_BASE_LAYERS
+#exit 1
+#	echo $pre"Prepare yocto poky reference for \"${U2UP_MACHINE}\"!"
+#	check_subdir $U2UP_POKY_REPO_NAME $U2UP_POKY_REPO_BRANCH
+#	ret=$?
+#	if [ $ret -ne 0 ]; then
+#		prepare_subdir $U2UP_POKY_REPO_NAME $U2UP_POKY_REPO_BRANCH $U2UP_POKY_REPO_URL
+#		ret=$?
+#		if [ $ret -ne 0 ]; then
+#			echo $pre"ERROR - Failed!"
+#			echo
+#			return $ret
+#		fi
+#	fi
 
 	echo $pre"Prepare machine layer for \"${U2UP_MACHINE}\"!"
-	check_subdir $U2UP_MACH_LAYER_NAME $U2UP_MACH_BRANCH
+	check_subdir $U2UP_MACH_LAYER_NAME $U2UP_MACH_REPO_BRANCH
 	ret=$?
 	if [ $ret -ne 0 ]; then
-		prepare_subdir $U2UP_MACH_LAYER_NAME $U2UP_MACH_BRANCH $U2UP_MACH_REPO_URL
+		prepare_subdir $U2UP_MACH_LAYER_NAME $U2UP_MACH_REPO_BRANCH $U2UP_MACH_REPO_URL
 		ret=$?
 	fi
 
 	echo $pre"Prepare build tree for \"${U2UP_MACHINE}\"!"
-	generate_buildir $U2UP_MACHINE $U2UP_MACH_LAYER_NAME $U2UP_MACH_BRANCH
+	generate_buildir $U2UP_MACHINE $U2UP_MACH_LAYER_NAME $U2UP_MACH_REPO_BRANCH
 	ret=$?
 	if [ $ret -ne 0 ]; then
 		echo $pre"ERROR - Failed!"
@@ -343,13 +459,18 @@ function build_machine ()
 	fi
 
 	echo $pre"Setting build environment for \"${U2UP_MACHINE}\"!"
-	source ${U2UP_POKY}_${U2UP_POKY_BRANCH}/oe-init-build-env ${U2UP_DIR}/build.${U2UP_MACHINE}_${U2UP_POKY_BRANCH}
+	source ${U2UP_REPOS_DIR}/${U2UP_POKY_REPO_NAME}_${U2UP_POKY_REPO_BRANCH}/oe-init-build-env ${U2UP_DIR}/build.${U2UP_MACHINE}_${U2UP_POKY_REPO_BRANCH}
 
 	export U2UP_REPOS_DIR
-	export U2UP_POKY_BRANCH
+	export U2UP_POKY_REPO_BRANCH
 	export U2UP_YOCTO_SHARED
 	export U2UP_MACH_BUILDIR="${MACH_BUILDIR}"
-	export BB_ENV_EXTRAWHITE="$BB_ENV_EXTRAWHITE U2UP_REPOS_DIR U2UP_POKY_BRANCH U2UP_YOCTO_SHARED U2UP_MACH_BUILDIR"
+	export BB_ENV_EXTRAWHITE="$BB_ENV_EXTRAWHITE U2UP_REPOS_DIR U2UP_POKY_REPO_BRANCH U2UP_YOCTO_SHARED U2UP_MACH_BUILDIR"
+	echo $pre"BB_ENV_EXTRAWHITE=${BB_ENV_EXTRAWHITE}"
+	echo $pre"U2UP_REPOS_DIR=${U2UP_REPOS_DIR}"
+	echo $pre"U2UP_POKY_REPO_BRANCH=${U2UP_POKY_REPO_BRANCH}"
+	echo $pre"U2UP_YOCTO_SHARED=${U2UP_YOCTO_SHARED}"
+	echo $pre"U2UP_MACH_BUILDIR=${U2UP_MACH_BUILDIR}"
 
 	if [ -n "${1}" ] && [ "${1}" == "bbsh" ]; then
 		echo $pre"Entering U2UP bitbake shell for \"${U2UP_MACHINE}\"!"

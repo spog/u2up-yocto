@@ -2,8 +2,3 @@
 U2UP_DIR="u2up"
 U2UP_YOCTO_SHARED="${HOME}/u2up-yocto-shared"
 
-# U2UP Poky vars:
-U2UP_POKY="poky"
-U2UP_POKY_BRANCH="thud"
-U2UP_POKY_REPO_URL="git://git.yoctoproject.org/poky"
-

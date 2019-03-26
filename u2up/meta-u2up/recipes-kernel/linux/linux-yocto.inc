@@ -1,4 +1,4 @@
-require ${YOCTODIR}/poky_${U2UP_POKY_BRANCH}/meta/recipes-kernel/linux/linux-yocto.inc
+require ${YOCTODIR}/${U2UP_REPOS_DIR}/poky_${U2UP_POKY_REPO_BRANCH}/meta/recipes-kernel/linux/linux-yocto.inc
 
 FILESEXTRAPATHS_prepend := "${THISDIR}/linux-yocto:"
 

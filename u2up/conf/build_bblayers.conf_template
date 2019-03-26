@@ -4,6 +4,11 @@ BUILDIR = "${TOPDIR}"
 U2UPDIR = "${@os.path.abspath("${BUILDIR}/..")}"
 YOCTODIR = "${@os.path.abspath("${U2UPDIR}/..")}"
 
-require ${U2UPDIR}/conf/bblayers.conf
+# POKY_BBLAYERS_CONF_VERSION is increased each time build/conf/bblayers.conf
+# changes incompatibly
+POKY_BBLAYERS_CONF_VERSION = "2"
 
-BBLAYERS += " \
+BBFILES ?= ""
+
+BBLAYERS ?= " \
+  ${U2UPDIR}/meta-u2up \
