@@ -18,7 +18,7 @@ meta_yocto_bsp_LAYER_PATH="${U2UP_REPOS_DIR}/poky_${poky_REPO_BRANCH}/${meta_yoc
 # NOTE!
 # Do not define machine layers here (they are in "machines-conf").
 # If you do not want to extend this versioned file, add your extra
-# layers in "extra-conf" file like this:
+# layers in "extras-conf" file like this:
 #
 #U2UP_EXTRA_LAYERS="layer_a layer_b ..."
 #
