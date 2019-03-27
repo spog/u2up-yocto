@@ -1,12 +1,15 @@
 # qemux86:
-qemux86_MACH_LAYER_NAME=""
-qemux86_MACH_LAYER_PATH=""
+qemux86_MACH_NAME="qemux86"
+qemux86_MACH_REPO="poky"
+qemux86_MACH_PATH="meta"
 
 # intel-corei7-64:
-intel_corei7_64_MACH_LAYER_NAME="meta-intel"
-intel_corei7_64_MACH_LAYER_PATH="${U2UP_REPOS_DIR}/${intel_corei7_64_MACH_LAYER_NAME}_${poky_REPO_BRANCH}"
+intel_corei7_64_MACH_NAME="intel-corei7-64"
+intel_corei7_64_MACH_REPO="meta-intel"
+intel_corei7_64_MACH_PATH=""
 
 # raspberrypi3-64:
-raspberrypi3_64_MACH_LAYER_NAME="meta-raspberrypi"
-raspberrypi3_64_MACH_LAYER_PATH="${U2UP_REPOS_DIR}/${raspberrypi3_64_MACH_LAYER_NAME}_${poky_REPO_BRANCH}"
+raspberrypi3_64_MACH_NAME="raspberrypi3-64"
+raspberrypi3_64_MACH_REPO="meta-raspberrypi"
+raspberrypi3_64_MACH_PATH=""
 

@@ -80,7 +80,11 @@ fi
 U2UP_MACHINE_PREFIX=${U2UP_MACHINE//-/_}
 #echo "U2UP_MACHINE_PREFIX=${U2UP_MACHINE_PREFIX}"
 
-U2UP_REPOS_DIR="repos"
+if [ ! -e "distro-conf/repos-conf" ]; then
+	echo $pre"ERROR - Missing configuration file distro-conf/repos-conf!"
+	echo
+	exit 1
+fi
 source distro-conf/repos-conf
 U2UP_POKY_REPO_NAME="${poky_REPO_NAME}"
 #echo "U2UP_POKY_REPO_NAME=${U2UP_POKY_REPO_NAME}"
@@ -91,51 +95,55 @@ U2UP_POKY_REPO_BRANCH="${poky_REPO_BRANCH}"
 U2UP_POKY_REPO_VERSION="${poky_REPO_VERSION}"
 #echo "U2UP_POKY_REPO_VERSION=${U2UP_POKY_REPO_VERSION}"
 
+# Must be sourced after the "repos-conf", because it vars refere to it!
+if [ ! -e "distro-conf/u2up-conf" ]; then
+	echo $pre"ERROR - Missing configuration file distro-conf/u2up-conf!"
+	echo
+	exit 1
+fi
 source distro-conf/u2up-conf
 U2UP_DOWNLOADS="${U2UP_YOCTO_SHARED}/downloads"
 
+if [ ! -e "distro-conf/machines-conf" ]; then
+	echo $pre"ERROR - Missing configuration file distro-conf/machines-conf!"
+	echo
+	exit 1
+fi
 source distro-conf/machines-conf
 
-U2UP_MACH_LAYER_NAME_var=${U2UP_MACHINE_PREFIX}_MACH_LAYER_NAME
-U2UP_MACH_LAYER_NAME=${!U2UP_MACH_LAYER_NAME_var}
-echo "U2UP_MACH_LAYER_NAME=${U2UP_MACH_LAYER_NAME}"
+U2UP_MACH_NAME_var=${U2UP_MACHINE_PREFIX}_MACH_NAME
+U2UP_MACH_NAME=${!U2UP_MACH_NAME_var}
+U2UP_MACH_REPO_var=${U2UP_MACHINE_PREFIX}_MACH_REPO
+U2UP_MACH_REPO=${!U2UP_MACH_REPO_var}
+U2UP_MACH_PATH_var=${U2UP_MACHINE_PREFIX}_MACH_PATH
+U2UP_MACH_PATH=${!U2UP_MACH_PATH_var}
+#echo "U2UP_MACH_NAME=${U2UP_MACH_NAME}"
+#echo "U2UP_MACH_REPO=${U2UP_MACH_REPO}"
+#echo "U2UP_MACH_PATH=${U2UP_MACH_PATH}"
+#echo
 
-U2UP_MACH_LAYER_PATH_var=${U2UP_MACHINE_PREFIX}_MACH_LAYER_PATH
-U2UP_MACH_LAYER_PATH=${!U2UP_MACH_LAYER_PATH_var}
-echo "U2UP_MACH_LAYER_PATH=${U2UP_MACH_LAYER_PATH}"
-
-U2UP_MACH_LAYER_PREFIX=${U2UP_MACH_LAYER_NAME//-/_}
-echo "U2UP_MACH_LAYER_PREFIX=${U2UP_MACH_LAYER_PREFIX}"
-
-U2UP_MACH_REPO_URL_var=${U2UP_MACH_LAYER_PREFIX}_REPO_URL
+U2UP_MACH_REPO_PREFIX=${U2UP_MACH_REPO//-/_}
+U2UP_MACH_REPO_URL_var=${U2UP_MACH_REPO_PREFIX}_REPO_URL
 U2UP_MACH_REPO_URL=${!U2UP_MACH_REPO_URL_var}
-echo "U2UP_MACH_REPO_URL=${U2UP_MACH_REPO_URL}"
-
-U2UP_MACH_REPO_BRANCH_var=${U2UP_MACH_LAYER_PREFIX}_REPO_BRANCH
-echo "U2UP_MACH_REPO_BRANCH_var=${U2UP_MACH_REPO_BRANCH_var}"
+U2UP_MACH_REPO_BRANCH_var=${U2UP_MACH_REPO_PREFIX}_REPO_BRANCH
 U2UP_MACH_REPO_BRANCH=${!U2UP_MACH_REPO_BRANCH_var}
-echo "U2UP_MACH_REPO_BRANCH=${U2UP_MACH_REPO_BRANCH}"
-
-U2UP_MACH_REPO_VERSION_var=${U2UP_MACH_LAYER_PREFIX}_REPO_VERSION
+U2UP_MACH_REPO_VERSION_var=${U2UP_MACH_REPO_PREFIX}_REPO_VERSION
 U2UP_MACH_REPO_VERSION=${!U2UP_MACH_REPO_VERSION_var}
-echo "U2UP_MACH_REPO_VERSION=${U2UP_MACH_REPO_VERSION}"
-echo
+#echo "U2UP_MACH_REPO_PREFIX=${U2UP_MACH_REPO_PREFIX}"
+#echo "U2UP_MACH_REPO_URL=${U2UP_MACH_REPO_URL}"
+#echo "U2UP_MACH_REPO_BRANCH=${U2UP_MACH_REPO_BRANCH}"
+#echo "U2UP_MACH_REPO_VERSION=${U2UP_MACH_REPO_VERSION}"
+#echo
 
-if [ -z "${U2UP_MACH_LAYER_NAME}" ] && [ "${U2UP_MACHINE/#qemu/}" = "${U2UP_MACHINE}" ]; then
+if [ -z "${U2UP_MACH_NAME}" ] && [ "${U2UP_MACHINE/#qemu/}" = "${U2UP_MACHINE}" ]; then
 	echo $pre"ERROR - Unknown MACHINE (check: distro-conf/machines-conf)!"
 	echo
 	usage_help
 	exit 1
 fi
 
-if [ ! -e "distro-conf/layers-conf" ]; then
-	echo $pre"ERROR - Missing file distro-conf/layers-conf!"
-	echo
-	exit 1
-fi
-source distro-conf/layers-conf
 if [ -z "${U2UP_BASE_LAYERS}" ]; then
-	echo $pre"ERROR - No layers enabled in distro-conf/layers-conf!"
+	echo $pre"ERROR - No layers enabled in distro-conf/u2up-conf!"
 	echo
 	exit 1
 fi
@@ -161,21 +169,21 @@ function check_downloads ()
 }
 
 # Check subdir!
-function check_subdir ()
+function check_repo ()
 {
 	ret=1
-	SUBTREE=$1
+	NAME=$1
 	BRANCH=$2
 
 	# Check if no args (first arg empty) - dummy check; not an error:
-	if [ -z "$SUBTREE" ]; then
-		echo $pre"Path: NONE - already provired by Poky!"
+	if [ -z "$NAME" ]; then
+		echo $pre"Repo path: NONE - already provired by Poky!"
 		return 0
 	fi
 
 	# Check second arg (if first arg exists, the second has to exist too):
 	if [ -z "$BRANCH" ]; then
-		echo $pre"ERROR - check_subdir () Missing second (BRANCH) param!"
+		echo $pre"ERROR - check_repo () Missing second (BRANCH) param!"
 		return $ret
 	fi
 
@@ -184,22 +192,22 @@ function check_subdir ()
 		mkdir -p $U2UP_REPOS_DIR
 	fi
 
-	echo $pre"Path: ${U2UP_REPOS_DIR}/${SUBTREE}_${BRANCH}"
-	if [ -d "${U2UP_REPOS_DIR}/${SUBTREE}_${BRANCH}" ]; then
-		pushd ${U2UP_REPOS_DIR}/${SUBTREE}_${BRANCH} &> /dev/null
+	echo $pre"Repo path: ${U2UP_REPOS_DIR}/${NAME}_${BRANCH}"
+	if [ -d "${U2UP_REPOS_DIR}/${NAME}_${BRANCH}" ]; then
+		pushd ${U2UP_REPOS_DIR}/${NAME}_${BRANCH} &> /dev/null
 		git checkout $BRANCH &> /dev/null
 		ret=$?
 		popd &> /dev/null
 		if [ $ret -ne 0 ]; then
-			echo $pre"ERROR - check_subdir () Git branch test checkout error - Remove: ${U2UP_REPOS_DIR}/${SUBTREE}_${BRANCH}!"
-			rm -rf ${U2UP_REPOS_DIR}/${SUBTREE}_$BRANCH
+			echo $pre"ERROR - check_repo () Git branch test checkout error - Remove: ${U2UP_REPOS_DIR}/${NAME}_${BRANCH}!"
+			rm -rf ${U2UP_REPOS_DIR}/${NAME}_$BRANCH
 		else
-			if [ ! -f "${U2UP_DOWNLOADS}/${SUBTREE}_${BRANCH}_git.tar.gz" ]; then
-				echo $pre"Archiving \"${SUBTREE}_${BRANCH}\" into \"${U2UP_DOWNLOADS}/${SUBTREE}_${BRANCH}_git.tar.gz\"!"
+			if [ ! -f "${U2UP_DOWNLOADS}/${NAME}_${BRANCH}_git.tar.gz" ]; then
+				echo $pre"Archiving \"${NAME}_${BRANCH}\" into \"${U2UP_DOWNLOADS}/${NAME}_${BRANCH}_git.tar.gz\"!"
 				pushd ${U2UP_REPOS_DIR} &> /dev/null
-				tar czf ${U2UP_DOWNLOADS}/${SUBTREE}_${BRANCH}_git.tar.gz ${SUBTREE}_$BRANCH
+				tar czf ${U2UP_DOWNLOADS}/${NAME}_${BRANCH}_git.tar.gz ${NAME}_$BRANCH
 				if [ $? -ne 0 ]; then
-					echo $pre"WARNING - prepare failed (tar czf: ${SUBTREE}_${BRANCH} subdir not archived)!"
+					echo $pre"WARNING - prepare failed (tar czf: ${NAME}_${BRANCH} subdir not archived)!"
 					echo
 				fi
 				popd &> /dev/null
@@ -213,17 +221,17 @@ function check_subdir ()
 function prepare_subdir ()
 {
 	ret=1
-	SUBTREE=$1
+	NAME=$1
 	BRANCH=$2
 	REPO_URL=$3
 
 	# Check if no args (first arg empty) - dummy check; not an error:
-	if [ -z "$SUBTREE" ]; then
+	if [ -z "$NAME" ]; then
 		return 0
 	fi
 
 	if [ -z "$BRANCH" ] || [ -z "$REPO_URL" ]; then
-		echo $pre"ERROR - check_subdir () Invalid params!"
+		echo $pre"ERROR - check_repo () Invalid params!"
 		return $ret
 	fi
 
@@ -232,33 +240,33 @@ function prepare_subdir ()
 		mkdir -p $U2UP_REPOS_DIR
 	fi
 
-	echo $pre"Preparing \"${U2UP_REPOS_DIR}/${SUBTREE}_${BRANCH}\" subdir (from \"$REPO_URL\")!"
+	echo $pre"Preparing \"${U2UP_REPOS_DIR}/${NAME}_${BRANCH}\" subdir (from \"$REPO_URL\")!"
 	pushd ${U2UP_REPOS_DIR} &> /dev/null
-	if [ ! -d "${SUBTREE}" ] && [ ! -d "${SUBTREE}_${BRANCH}" ]; then
-		if [ -f "${U2UP_DOWNLOADS}/${SUBTREE}_${BRANCH}_git.tar.gz" ]; then
-			echo $pre"Extracting \"${SUBTREE}\" from \"${U2UP_DOWNLOADS}/${SUBTREE}_${BRANCH}_git.tar.gz\"!"
-			tar xzf ${U2UP_DOWNLOADS}/${SUBTREE}_${BRANCH}_git.tar.gz
+	if [ ! -d "${NAME}" ] && [ ! -d "${NAME}_${BRANCH}" ]; then
+		if [ -f "${U2UP_DOWNLOADS}/${NAME}_${BRANCH}_git.tar.gz" ]; then
+			echo $pre"Extracting \"${NAME}\" from \"${U2UP_DOWNLOADS}/${NAME}_${BRANCH}_git.tar.gz\"!"
+			tar xzf ${U2UP_DOWNLOADS}/${NAME}_${BRANCH}_git.tar.gz
 			ret=$?
 			if [ $ret -ne 0 ]; then
-				echo $pre"ERROR - prepare failed (tar xzf: ${SUBTREE}_${BRANCH} subdir not ok)!"
+				echo $pre"ERROR - prepare failed (tar xzf: ${NAME}_${BRANCH} subdir not ok)!"
 				echo
 			fi
 		else
-			git clone --single-branch -b $BRANCH $REPO_URL ${SUBTREE}_$BRANCH
+			git clone --single-branch -b $BRANCH $REPO_URL ${NAME}_$BRANCH
 			ret=$?
 			if [ $ret -ne 0 ]; then
-				echo $pre"ERROR - prepare failed (git clone: ${SUBTREE}_${BRANCH} subdir not ok)!"
+				echo $pre"ERROR - prepare failed (git clone: ${NAME}_${BRANCH} subdir not ok)!"
 				echo
 			else
-				check_subdir $SUBTREE $BRANCH
+				check_repo $NAME $BRANCH
 				ret=$?
 			fi
 		fi
 		if [ $ret -ne 0 ]; then
-			rm -rf ${SUBTREE}_${BRANCH}
+			rm -rf ${NAME}_${BRANCH}
 		fi
 	else
-		check_subdir $SUBTREE $BRANCH
+		check_repo $NAME $BRANCH
 		ret=$?
 	fi
 	popd &> /dev/null
@@ -277,15 +285,43 @@ function add_bblayers ()
 	fi
 
 	for name in ${LAYERS_LIST}; do
-		echo
-		echo "name=${name}"
 		name_prefix=${name//-/_}
-		echo "name_prefix=${name_prefix}"
+		name_layer_repo_var=${name_prefix}_LAYER_REPO
+		name_layer_repo=${!name_layer_repo_var}
 		name_layer_path_var=${name_prefix}_LAYER_PATH
-		echo "name_layer_path_var=${name_layer_path_var}"
 		name_layer_path=${!name_layer_path_var}
-		echo "name_layer_path=${name_layer_path}"
-		echo "  \${YOCTODIR}/${name_layer_path} \\" >> ${BBLAYERS_CONF}
+#		echo "name_prefix=${name_prefix}"
+#		echo "name_layer_repo_var=${name_layer_repo_var}"
+#		echo "name_layer_repo=${name_layer_repo}"
+#		echo "name_layer_path_var=${name_layer_path_var}"
+#		echo "name_layer_path=${name_layer_path}"
+
+		repo_prefix=${name_layer_repo//-/_}
+		repo_name_var=${repo_prefix}_REPO_NAME
+		repo_name=${!repo_name_var}
+		repo_url_var=${repo_prefix}_REPO_URL
+		repo_url=${!repo_url_var}
+		repo_branch_var=${repo_prefix}_REPO_BRANCH
+		repo_branch=${!repo_branch_var}
+#		echo "repo_prefix=${repo_prefix}"
+#		echo "repo_name_var=${repo_name_var}"
+#		echo "repo_name=${repo_name}"
+#		echo "repo_url_var=${repo_url_var}"
+#		echo "repo_url=${repo_url}"
+#		echo "repo_branch_var=${repo_branch_var}"
+#		echo "repo_branch=${repo_branch}"
+
+		if [ -z "${name_layer_path}" ]; then
+			layer_path="${U2UP_REPOS_DIR}/${repo_name}_${repo_branch}"
+		else
+			layer_path="${U2UP_REPOS_DIR}/${repo_name}_${repo_branch}/${name_layer_path}"
+		fi
+		if [ ! -d "${layer_path}" ]; then
+			echo $pre"ERROR: Missing layer path: ${layer_path}"
+			return 1
+		fi
+
+		echo "  \${YOCTODIR}/${layer_path} \\" >> ${BBLAYERS_CONF}
 	done
 	return 0
 }
@@ -326,10 +362,18 @@ function generate_buildir ()
 	if [ -n "${U2UP_EXTRA_LAYERS}" ]; then
 		add_bblayers U2UP_EXTRA_LAYERS ${MACH_BUILDIR}/conf/bblayers.conf
 	fi
-	if [ -n "$MACH_LAYER" ]; then
-		echo "  \${YOCTODIR}/${U2UP_REPOS_DIR}/${MACH_LAYER}_${MACH_BRANCH} \\" >> ${MACH_BUILDIR}/conf/bblayers.conf
+	if [ -z "${U2UP_MACH_PATH}" ]; then
+		MACH_PATH="${U2UP_REPOS_DIR}/${MACH_LAYER}_${MACH_BRANCH}"
+	else
+		MACH_PATH="${U2UP_REPOS_DIR}/${MACH_LAYER}_${MACH_BRANCH}/${U2UP_MACH_PATH}"
 	fi
+	if [ ! -d "${MACH_PATH}" ]; then
+		echo $pre"ERROR: Missing machine path: ${MACH_PATH}"
+		return 1
+	fi
+	echo "  \${YOCTODIR}/${MACH_PATH} \\" >> ${MACH_BUILDIR}/conf/bblayers.conf
 	echo "  \"" >> ${MACH_BUILDIR}/conf/bblayers.conf
+	#Possibly remove duplicate layers?
 
 	ret=0
 	return $ret
@@ -347,32 +391,33 @@ function prepare_layers ()
 	fi
 
 	for name in ${LAYERS_LIST}; do
-		echo
-#		echo "name=${name}"
 		name_prefix=${name//-/_}
-#		echo "name_prefix=${name_prefix}"
 		name_layer_repo_var=${name_prefix}_LAYER_REPO
-#		echo "name_layer_repo_var=${name_layer_repo_var}"
 		name_layer_repo=${!name_layer_repo_var}
-#		echo "name_layer_repo=${name_layer_repo}"
 		name_layer_path_var=${name_prefix}_LAYER_PATH
-#		echo "name_layer_path_var=${name_layer_path_var}"
 		name_layer_path=${!name_layer_path_var}
+#		echo "name_prefix=${name_prefix}"
+#		echo "name_layer_repo_var=${name_layer_repo_var}"
+#		echo "name_layer_repo=${name_layer_repo}"
+#		echo "name_layer_path_var=${name_layer_path_var}"
 #		echo "name_layer_path=${name_layer_path}"
 
 		echo $pre"Prepare repo \"${name_layer_repo}\" for layer \"${name}\""
-#		echo
 		repo_prefix=${name_layer_repo//-/_}
-#		echo "repo_prefix=${repo_prefix}"
+		repo_name_var=${repo_prefix}_REPO_NAME
+		repo_name=${!repo_name_var}
 		repo_url_var=${repo_prefix}_REPO_URL
-#		echo "repo_url_var=${repo_url_var}"
 		repo_url=${!repo_url_var}
-#		echo "repo_url=${repo_url}"
 		repo_branch_var=${repo_prefix}_REPO_BRANCH
-#		echo "repo_branch_var=${repo_branch_var}"
 		repo_branch=${!repo_branch_var}
+#		echo "repo_prefix=${repo_prefix}"
+#		echo "repo_name_var=${repo_name_var}"
+#		echo "repo_name=${repo_name}"
+#		echo "repo_url_var=${repo_url_var}"
+#		echo "repo_url=${repo_url}"
+#		echo "repo_branch_var=${repo_branch_var}"
 #		echo "repo_branch=${repo_branch}"
-		check_subdir $name_layer_repo $repo_branch
+		check_repo $name_layer_repo $repo_branch
 		ret=$?
 		if [ $ret -ne 0 ]; then
 			prepare_subdir $name_layer_repo $repo_branch $repo_url
@@ -383,12 +428,18 @@ function prepare_layers ()
 				return $ret
 			fi
 		fi
-		if [ -d "${name_layer_path}" ]; then
-			echo $pre"Prepared ${name} layer path: ${name_layer_path}"
+		if [ -z "${name_layer_path}" ]; then
+			layer_path="${U2UP_REPOS_DIR}/${repo_name}_${repo_branch}"
 		else
-			echo $pre"Missing ${name} layer path: ${name_layer_path}"
+			layer_path="${U2UP_REPOS_DIR}/${repo_name}_${repo_branch}/${name_layer_path}"
+		fi
+		if [ -d "${layer_path}" ]; then
+			echo $pre"Prepared ${name} layer path: ${layer_path}"
+		else
+			echo $pre"Missing ${name} layer path: ${layer_path}"
 			return 1
 		fi
+		echo $pre"---"
 	done
 
 	return 0
@@ -407,31 +458,38 @@ function prepare_machine ()
 	fi
 
 	echo $pre"Prepare base layers for \"${U2UP_MACHINE}\"!"
+	echo $pre"-----------------------"
 	prepare_layers U2UP_BASE_LAYERS
-#exit 1
-#	echo $pre"Prepare yocto poky reference for \"${U2UP_MACHINE}\"!"
-#	check_subdir $U2UP_POKY_REPO_NAME $U2UP_POKY_REPO_BRANCH
-#	ret=$?
-#	if [ $ret -ne 0 ]; then
-#		prepare_subdir $U2UP_POKY_REPO_NAME $U2UP_POKY_REPO_BRANCH $U2UP_POKY_REPO_URL
-#		ret=$?
-#		if [ $ret -ne 0 ]; then
-#			echo $pre"ERROR - Failed!"
-#			echo
-#			return $ret
-#		fi
-#	fi
 
 	echo $pre"Prepare machine layer for \"${U2UP_MACHINE}\"!"
-	check_subdir $U2UP_MACH_LAYER_NAME $U2UP_MACH_REPO_BRANCH
+	echo $pre"-------------------------"
+	check_repo $U2UP_MACH_REPO $U2UP_MACH_REPO_BRANCH
 	ret=$?
 	if [ $ret -ne 0 ]; then
-		prepare_subdir $U2UP_MACH_LAYER_NAME $U2UP_MACH_REPO_BRANCH $U2UP_MACH_REPO_URL
+		prepare_subdir $U2UP_MACH_REPO $U2UP_MACH_REPO_BRANCH $U2UP_MACH_REPO_URL
 		ret=$?
+			if [ $ret -ne 0 ]; then
+			echo $pre"ERROR - Failed!"
+			echo
+			return $ret
+		fi
 	fi
+	if [ -z "${U2UP_MACH_PATH}" ]; then
+		layer_path="${U2UP_REPOS_DIR}/${U2UP_MACH_REPO}_${U2UP_MACH_REPO_BRANCH}"
+	else
+		layer_path="${U2UP_REPOS_DIR}/${U2UP_MACH_REPO}_${U2UP_MACH_REPO_BRANCH}/${U2UP_MACH_PATH}"
+	fi
+	if [ -d "${layer_path}" ]; then
+		echo $pre"Prepared machine layer path: ${layer_path}"
+	else
+		echo $pre"ERROR: Missing machine layer path: ${layer_path}"
+		return 1
+	fi
+	echo $pre"---"
 
 	echo $pre"Prepare build tree for \"${U2UP_MACHINE}\"!"
-	generate_buildir $U2UP_MACHINE $U2UP_MACH_LAYER_NAME $U2UP_MACH_REPO_BRANCH
+	echo $pre"----------------------"
+	generate_buildir $U2UP_MACHINE $U2UP_MACH_REPO $U2UP_MACH_REPO_BRANCH
 	ret=$?
 	if [ $ret -ne 0 ]; then
 		echo $pre"ERROR - Failed!"
