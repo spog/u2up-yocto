@@ -26,7 +26,7 @@ To add another machine, edit:
 To add your own layers, edit:
 "distro-conf/repos-conf"
 and create/edit:
-"distro-conf/extras-conf"(see comments at the end of the
+"distro-conf/extras-conf" (see comments at the end of the
 "distro-conf/u2up-conf").
 
 Usage:
