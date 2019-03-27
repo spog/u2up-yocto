@@ -2,7 +2,7 @@ The "u2up-yocto" Linux distribution build project
 =================================================
 
 --------------------------------------------------------------------
-Copyright (C) 2018 Samo Pogacnik <samo_pogacnik@t-2.net>
+Copyright (C) 2018-2019 Samo Pogacnik <samo_pogacnik@t-2.net>
 All rights reserved.
 
 The "u2up-yocto" software project is provided under the terms of the
@@ -15,10 +15,19 @@ Description:
 This is an umbrella project using "yocto/poky/openembedded" Linux
 distribution build system and recipe sources.
 
-"u2up-yocto" currently builds for two target machines:
+"u2up-yocto" currently builds for three target machines:
 - qemux86
 - intel-corei7-64
 - raspberypi3-64
+
+To add another machine, edit:
+"distro-conf/machines-conf".
+
+To add your own layers, edit:
+"distro-conf/repos-conf"
+and create/edit:
+"distro-conf/extras-conf"(see comments at the end of the
+"distro-conf/u2up-conf").
 
 Usage:
 ------
