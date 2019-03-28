@@ -168,7 +168,7 @@ function check_downloads ()
 	return 0
 }
 
-# Check subdir!
+# Check repo!
 function check_repo ()
 {
 	ret=1
@@ -217,8 +217,8 @@ function check_repo ()
 	return $ret 
 }
 
-# Prepare subdir!
-function prepare_subdir ()
+# Prepare repo!
+function prepare_repo ()
 {
 	ret=1
 	NAME=$1
@@ -258,16 +258,20 @@ function prepare_subdir ()
 				echo $pre"ERROR - prepare failed (git clone: ${NAME}_${BRANCH} subdir not ok)!"
 				echo
 			else
+				popd &> /dev/null
 				check_repo $NAME $BRANCH
 				ret=$?
+				pushd ${U2UP_REPOS_DIR} &> /dev/null
 			fi
 		fi
 		if [ $ret -ne 0 ]; then
 			rm -rf ${NAME}_${BRANCH}
 		fi
 	else
+		popd &> /dev/null
 		check_repo $NAME $BRANCH
 		ret=$?
+		pushd ${U2UP_REPOS_DIR} &> /dev/null
 	fi
 	popd &> /dev/null
 	return $ret
@@ -420,7 +424,7 @@ function prepare_layers ()
 		check_repo $name_layer_repo $repo_branch
 		ret=$?
 		if [ $ret -ne 0 ]; then
-			prepare_subdir $name_layer_repo $repo_branch $repo_url
+			prepare_repo $name_layer_repo $repo_branch $repo_url
 			ret=$?
 				if [ $ret -ne 0 ]; then
 				echo $pre"ERROR - Failed!"
@@ -457,16 +461,16 @@ function prepare_machine ()
 		mkdir -p $U2UP_DOWNLOADS
 	fi
 
-	echo $pre"Prepare base layers for \"${U2UP_MACHINE}\"!"
-	echo $pre"-----------------------"
+	echo $pre"Prepare base layers repos!"
+	echo $pre"--------------------------"
 	prepare_layers U2UP_BASE_LAYERS
 
-	echo $pre"Prepare machine layer for \"${U2UP_MACHINE}\"!"
-	echo $pre"-------------------------"
+	echo $pre"Prepare machine layer repo for \"${U2UP_MACHINE}\"!"
+	echo $pre"------------------------------"
 	check_repo $U2UP_MACH_REPO $U2UP_MACH_REPO_BRANCH
 	ret=$?
 	if [ $ret -ne 0 ]; then
-		prepare_subdir $U2UP_MACH_REPO $U2UP_MACH_REPO_BRANCH $U2UP_MACH_REPO_URL
+		prepare_repo $U2UP_MACH_REPO $U2UP_MACH_REPO_BRANCH $U2UP_MACH_REPO_URL
 		ret=$?
 			if [ $ret -ne 0 ]; then
 			echo $pre"ERROR - Failed!"
@@ -487,8 +491,8 @@ function prepare_machine ()
 	fi
 	echo $pre"---"
 
-	echo $pre"Prepare build tree for \"${U2UP_MACHINE}\"!"
-	echo $pre"----------------------"
+	echo $pre"Prepare build tree for machine \"${U2UP_MACHINE}\"!"
+	echo $pre"------------------------------"
 	generate_buildir $U2UP_MACHINE $U2UP_MACH_REPO $U2UP_MACH_REPO_BRANCH
 	ret=$?
 	if [ $ret -ne 0 ]; then
