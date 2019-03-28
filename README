@@ -26,19 +26,45 @@ To add another machine, edit:
 To add your own layers, edit:
 "distro-conf/repos-conf"
 and create/edit:
-"distro-conf/extras-conf" (see comments at the end of the
-"distro-conf/u2up-conf").
+"distro-conf/addons-conf" (see comments at the end of the
+"distro-conf/u2up-conf_default").
 
-Usage:
+Howto:
 ------
 To build a Linux distribution image for a selected target, simply
-issue the following two sample commands from the project TOPDIR:
+the "distro" command from the project TOPDIR. You need to prepare
+your environment configuration file distro-conf/u2up-conf.
+
+Sample commands:
+----------------
+$ ./distro --help
+Usage: distro [MACHINE COMMAND]|[OPTIONS]
+ MACHINE := qemux86|intel-corei7-64|raspberrypi3-64|...
+ COMMAND := prepare|bbsh|bitbake [args]
+ OPTIONS := {--help|-h}|{--layers}|{--machines}|{--repos}
+
+$ ./distro --layers
+distro-u2up: ERROR - Missing configuration file distro-conf/u2up-conf!
+
+distro-u2up: First copy distro-conf/u2up-conf_default into distro-conf/u2up-conf
+distro-u2up: and set your own absolute writable path for all your downloads and
+distro-u2up: shared sstate-cache in the U2UP_YOCTO_SHARED variable of your new
+distro-u2up: distro-conf/u2up-conf configuration file!
+
+./distro --layers
+meta
+meta-poky
+meta-yocto-bsp
 
 $ ./distro qemux86 prepare
 
 $ ./distro qemux86 bbsh
 
 $ ./distro qemux86 bitbake [bb_args]
+
+Default build:
+--------------
+$ ./distro qemux86 bitbake
 
 Find built images in "u2up/build.qemux86_thud/tmp/deploy/images/qemux86/" for example:
 - bzImage -> bzImage--4.14.76+git0+3435617380_2c5caa7e84-r0-qemux86-20181125204414.bin

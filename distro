@@ -14,10 +14,10 @@
 
 function usage_help ()
 {
-	echo "Usage: "$(basename  $0)" [MACHINE COMMAND] [OPTIONS]"
+	echo "Usage: "$(basename  $0)" [MACHINE COMMAND]|[OPTIONS]"
 	echo " MACHINE := qemux86|intel-corei7-64|raspberrypi3-64|..."
 	echo " COMMAND := prepare|bbsh|bitbake [args]"
-	echo " OPTIONS := {--help|-h}"
+	echo " OPTIONS := {--help|-h}|{--layers}|{--machines}|{--repos}"
 	echo
 	return
 }
@@ -44,6 +44,9 @@ do
 		usage_help
 		exit 0
 		;;
+	--*)
+		U2UP_OPTION=$1
+		;;
 	*)
 		if [ -z "$U2UP_MACHINE" ]; then
 			U2UP_MACHINE=$1
@@ -62,14 +65,14 @@ do
 	shift # to the next token, if any
 done
 
-if [ -z "$U2UP_COMMAND" ]; then
+if [ -z "$U2UP_COMMAND" ] && [ -z "$U2UP_OPTION" ]; then
 	echo $pre"ERROR - Missing COMMAND!"
 	echo
 	usage_help
 	exit 1
 fi
 
-if [ -z "$U2UP_MACHINE" ]; then
+if [ -z "$U2UP_MACHINE" ] && [ -z "$U2UP_OPTION" ]; then
 	echo $pre"ERROR - Missing MACHINE!"
 	echo
 	usage_help
@@ -86,14 +89,6 @@ if [ ! -e "distro-conf/repos-conf" ]; then
 	exit 1
 fi
 source distro-conf/repos-conf
-U2UP_POKY_REPO_NAME="${poky_REPO_NAME}"
-#echo "U2UP_POKY_REPO_NAME=${U2UP_POKY_REPO_NAME}"
-U2UP_POKY_REPO_URL="${poky_REPO_URL}"
-#echo "U2UP_POKY_REPO_URL=${U2UP_POKY_REPO_URL}"
-U2UP_POKY_REPO_BRANCH="${poky_REPO_BRANCH}"
-#echo "U2UP_POKY_REPO_BRANCH=${U2UP_POKY_REPO_BRANCH}"
-U2UP_POKY_REPO_VERSION="${poky_REPO_VERSION}"
-#echo "U2UP_POKY_REPO_VERSION=${U2UP_POKY_REPO_VERSION}"
 
 # Must be sourced after the "repos-conf", because it vars refere to it!
 if [ ! -e "distro-conf/u2up-conf" ]; then
@@ -129,6 +124,42 @@ if [ ! -e "distro-conf/machines-conf" ]; then
 	exit 1
 fi
 source distro-conf/machines-conf
+
+if [ -n "$U2UP_OPTION" ]; then
+	case $U2UP_OPTION in
+	--layers)
+		for var_name in $(set | grep "_LAYER_NAME" | sed s/\=.*//); do
+			echo ${!var_name}
+		done
+		;;
+	--machines)
+		for var_name in $(set | grep "_MACH_NAME" | sed s/\=.*//); do
+			echo ${!var_name}
+		done
+		;;
+	--repos)
+		for var_name in $(set | grep "_REPO_NAME" | sed s/\=.*//); do
+			echo ${!var_name}
+		done
+		;;
+	*)
+		echo $pre"ERROR - Unknown option: "$U2UP_OPTION
+		echo
+		usage_help
+		exit 1
+		;;
+	esac
+	exit 0
+fi
+
+U2UP_POKY_REPO_NAME="${poky_REPO_NAME}"
+#echo "U2UP_POKY_REPO_NAME=${U2UP_POKY_REPO_NAME}"
+U2UP_POKY_REPO_URL="${poky_REPO_URL}"
+#echo "U2UP_POKY_REPO_URL=${U2UP_POKY_REPO_URL}"
+U2UP_POKY_REPO_BRANCH="${poky_REPO_BRANCH}"
+#echo "U2UP_POKY_REPO_BRANCH=${U2UP_POKY_REPO_BRANCH}"
+U2UP_POKY_REPO_VERSION="${poky_REPO_VERSION}"
+#echo "U2UP_POKY_REPO_VERSION=${U2UP_POKY_REPO_VERSION}"
 
 U2UP_MACH_NAME_var=${U2UP_MACHINE_PREFIX}_MACH_NAME
 U2UP_MACH_NAME=${!U2UP_MACH_NAME_var}
