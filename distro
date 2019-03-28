@@ -99,9 +99,28 @@ U2UP_POKY_REPO_VERSION="${poky_REPO_VERSION}"
 if [ ! -e "distro-conf/u2up-conf" ]; then
 	echo $pre"ERROR - Missing configuration file distro-conf/u2up-conf!"
 	echo
+	echo $pre"First copy distro-conf/u2up-conf_default into distro-conf/u2up-conf"
+	echo $pre"and set your own absolute writable path for all your downloads and"
+	echo $pre"shared sstate-cache in the U2UP_YOCTO_SHARED variable of your new"
+	echo $pre"distro-conf/u2up-conf configuration file!"
+	echo
 	exit 1
 fi
 source distro-conf/u2up-conf
+if [ -z "${U2UP_YOCTO_SHARED}" ]; then
+	echo $pre"ERROR - Missing configuration value U2UP_YOCTO_SHARED in distro-conf/u2up-conf!"
+	echo
+	echo $pre"Set your own absolute writable path for all your downloads and"
+	echo $pre"shared sstate-cache in the U2UP_YOCTO_SHARED variable of your new"
+	echo $pre"distro-conf/u2up-conf configuration file!"
+	echo
+	exit 1
+fi
+if [ ! -d "${U2UP_YOCTO_SHARED}" ]; then
+	echo $pre"ERROR - U2UP_YOCTO_SHARED path \"${U2UP_YOCTO_SHARED}\" does not exist!"
+	echo
+	exit 1
+fi
 U2UP_DOWNLOADS="${U2UP_YOCTO_SHARED}/downloads"
 
 if [ ! -e "distro-conf/machines-conf" ]; then
@@ -148,10 +167,10 @@ if [ -z "${U2UP_BASE_LAYERS}" ]; then
 	exit 1
 fi
 
-if [ -e "distro-conf/extras-conf" ]; then
-	source distro-conf/extras-conf
-	if [ -z "${U2UP_EXTRA_LAYERS}" ]; then
-		echo $pre"WARNING - distro-conf/extras-conf exists, but no extra layers defined!"
+if [ -e "distro-conf/addonss-conf" ]; then
+	source distro-conf/addons-conf
+	if [ -z "${U2UP_ADDONS_LAYERS}" ]; then
+		echo $pre"WARNING - distro-conf/addons-conf exists, but no extra layers defined!"
 		echo
 	fi
 fi
@@ -363,8 +382,8 @@ function generate_buildir ()
 	echo "# THIS IS GENERATED FILE - DO NOT MAKE CHANGES HERE!" > ${MACH_BUILDIR}/conf/bblayers.conf
 	cat ${U2UP_DIR}/conf/build_bblayers.conf_template >> ${MACH_BUILDIR}/conf/bblayers.conf
 	add_bblayers U2UP_BASE_LAYERS ${MACH_BUILDIR}/conf/bblayers.conf
-	if [ -n "${U2UP_EXTRA_LAYERS}" ]; then
-		add_bblayers U2UP_EXTRA_LAYERS ${MACH_BUILDIR}/conf/bblayers.conf
+	if [ -n "${U2UP_ADDONS_LAYERS}" ]; then
+		add_bblayers U2UP_ADDONS_LAYERS ${MACH_BUILDIR}/conf/bblayers.conf
 	fi
 	if [ -z "${U2UP_MACH_PATH}" ]; then
 		MACH_PATH="${U2UP_REPOS_DIR}/${MACH_LAYER}_${MACH_BRANCH}"

@@ -1,7 +1,7 @@
 # U2UP common vars:
 U2UP_DIR="u2up"
 U2UP_REPOS_DIR="repos"
-U2UP_YOCTO_SHARED="${HOME}/u2up-yocto-shared"
+U2UP_YOCTO_SHARED=""
 
 # U2UP base layers:
 U2UP_BASE_LAYERS="meta meta-poky meta-yocto-bsp"
@@ -19,13 +19,12 @@ meta_yocto_bsp_LAYER_NAME="meta-yocto-bsp"
 meta_yocto_bsp_LAYER_REPO="poky"
 meta_yocto_bsp_LAYER_PATH="${meta_yocto_bsp_LAYER_NAME}"
 
-# Any additional layers may be added here:
 # NOTE!
-# Do not define machine layers here (they are in "machines-conf").
-# If you do not want to extend this versioned file, add your extra
-# layers in "extras-conf" file like this:
+# Define machine layers in "machines-conf".
+# Additional layers should be defined in "addons-conf" file like
+# this:
 #
-#U2UP_EXTRA_LAYERS="layer_a layer_b ..."
+#U2UP_ADDONS_LAYERS="layer_a layer_b ..."
 #
 #layer_a_LAYER_NAME="layer-a"
 #layer_a_LAYER_REPO="layer-a-repo"
