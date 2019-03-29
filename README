@@ -16,17 +16,17 @@ This is an umbrella project using "yocto/poky/openembedded" Linux
 distribution build system and recipe sources.
 It allows you to build basic images immediatelly and to extend the
 basic project via "addons" (any number of additional bitbake layers)
-provided. Addons are being added in a way, that the basic project
-does not get changed.
+provided. Addons may be added in a way, that the basic project does
+not get changed.
 
 Getting started:
 ---------------
-To grab the project run:
+Grab the project by:
 $ git clone https://github.com/spog/u2up-yocto.git
 Cloning into 'u2up-yocto'...
 ...
 
-First run:
+Initial taste of the "distro" command:
 $ cd u2up-yocto
 $ ./distro
 distro-u2up: ERROR - Missing COMMAND!
@@ -64,7 +64,7 @@ Set your writable shared absolute path:
 (edit distro-conf/u2up-conf and set your U2UP_YOCTO_SHARED variable.) 
 ...
 
-Third try: anf off you go for default qemux86 build:
+Third try: and off you go (for default qemux86 build, which may take a while):
 $ ./distro qemux86 bitbake
 distro-u2up: Prepare base layers repos!
 distro-u2up: --------------------------
@@ -94,6 +94,9 @@ distro-u2up: Done OK!
 distro-u2up: Setting build environment for "qemux86"!
 
 ### Shell environment set up for builds. ###
+...
+NOTE: Tasks Summary: Attempted 3934 tasks of which 3934 didn't need to be rerun and all succeeded.
+distro-u2up: Done OK!
 ...
 
 Find built images in "u2up/build.qemux86_thud/tmp/deploy/images/qemux86/" for example:
