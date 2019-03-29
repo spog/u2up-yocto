@@ -61,7 +61,7 @@ distro-u2up: distro-conf/u2up-conf configuration file!
 ...
 
 Set your writable shared absolute path:
-(edit distro-conf/u2up-conf and set your U2UP_YOCTO_SHARED variable.) 
+(edit distro-conf/u2up-conf to set your U2UP_YOCTO_SHARED variable.) 
 ...
 
 Third try: and off you go (for default qemux86 build, which may take a while):
