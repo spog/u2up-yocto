@@ -125,6 +125,23 @@ if [ ! -e "distro-conf/machines-conf" ]; then
 fi
 source distro-conf/machines-conf
 
+# Import "addons" configuration:
+if [ -n "${U2UP_ADDONS_DIR}" ]; then
+	if [ -e "${U2UP_ADDONS_DIR}/repos-conf" ]; then
+		source ${U2UP_ADDONS_DIR}/repos-conf
+	fi
+	if [ -e "${U2UP_ADDONS_DIR}/layers-conf" ]; then
+		source ${U2UP_ADDONS_DIR}/layers-conf
+		if [ -z "${U2UP_ADDONS_LAYERS}" ]; then
+			echo $pre"WARNING - addons/layers-conf exists, but no layers added!"
+			echo
+		fi
+	fi
+	if [ -e "${U2UP_ADDONS_DIR}/machines-conf" ]; then
+		source ${U2UP_ADDONS_DIR}/machines-conf
+	fi
+fi
+
 if [ -n "$U2UP_OPTION" ]; then
 	case $U2UP_OPTION in
 	--layers)
@@ -196,14 +213,6 @@ if [ -z "${U2UP_BASE_LAYERS}" ]; then
 	echo $pre"ERROR - No layers enabled in distro-conf/u2up-conf!"
 	echo
 	exit 1
-fi
-
-if [ -e "distro-conf/addonss-conf" ]; then
-	source distro-conf/addons-conf
-	if [ -z "${U2UP_ADDONS_LAYERS}" ]; then
-		echo $pre"WARNING - distro-conf/addons-conf exists, but no extra layers defined!"
-		echo
-	fi
 fi
 
 WDIR=$(dirname $0)

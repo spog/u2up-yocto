@@ -11,60 +11,90 @@ project.
 --------------------------------------------------------------------
 
 Description:
-------------
+-----------
 This is an umbrella project using "yocto/poky/openembedded" Linux
 distribution build system and recipe sources.
+It allows you to build basic images immediatelly and to extend the
+basic project via "addons" (any number of additional bitbake layers)
+provided. Addons are being added in a way, that the basic project
+does not get changed.
 
-"u2up-yocto" currently builds for three target machines:
-- qemux86
-- intel-corei7-64
-- raspberypi3-64
+Getting started:
+---------------
+To grab the project run:
+$ git clone https://github.com/spog/u2up-yocto.git
+Cloning into 'u2up-yocto'...
+...
 
-To add another machine, edit:
-"distro-conf/machines-conf".
+First run:
+$ cd u2up-yocto
+$ ./distro
+distro-u2up: ERROR - Missing COMMAND!
 
-To add your own layers, edit:
-"distro-conf/repos-conf"
-and create/edit:
-"distro-conf/addons-conf" (see comments at the end of the
-"distro-conf/u2up-conf_default").
-
-Howto:
-------
-To build a Linux distribution image for a selected target, simply
-the "distro" command from the project TOPDIR. You need to prepare
-your environment configuration file distro-conf/u2up-conf.
-
-Sample commands:
-----------------
-$ ./distro --help
 Usage: distro [MACHINE COMMAND]|[OPTIONS]
  MACHINE := qemux86|intel-corei7-64|raspberrypi3-64|...
  COMMAND := prepare|bbsh|bitbake [args]
  OPTIONS := {--help|-h}|{--layers}|{--machines}|{--repos}
+...
 
-$ ./distro --layers
+Go for default qemux86 build:
+$ ./distro qemux86 bitbake
 distro-u2up: ERROR - Missing configuration file distro-conf/u2up-conf!
 
 distro-u2up: First copy distro-conf/u2up-conf_default into distro-conf/u2up-conf
 distro-u2up: and set your own absolute writable path for all your downloads and
 distro-u2up: shared sstate-cache in the U2UP_YOCTO_SHARED variable of your new
 distro-u2up: distro-conf/u2up-conf configuration file!
+...
 
-./distro --layers
-meta
-meta-poky
-meta-yocto-bsp
+Create your "distro-conf/u2up-conf" file:
+$ cp distro-conf/u2up-conf_default distro-conf/u2up_conf
+...
 
-$ ./distro qemux86 prepare
-
-$ ./distro qemux86 bbsh
-
-$ ./distro qemux86 bitbake [bb_args]
-
-Default build:
---------------
+Second try: go for default qemux86 build:
 $ ./distro qemux86 bitbake
+distro-u2up: ERROR - Missing configuration value U2UP_YOCTO_SHARED in distro-conf/u2up-conf!
+
+distro-u2up: Set your own absolute writable path for all your downloads and
+distro-u2up: shared sstate-cache in the U2UP_YOCTO_SHARED variable of your new
+distro-u2up: distro-conf/u2up-conf configuration file!
+...
+
+Set your writable shared absolute path:
+(edit distro-conf/u2up-conf and set your U2UP_YOCTO_SHARED variable.) 
+...
+
+Third try: anf off you go for default qemux86 build:
+$ ./distro qemux86 bitbake
+distro-u2up: Prepare base layers repos!
+distro-u2up: --------------------------
+distro-u2up: Prepare repo "poky" for layer "meta"
+distro-u2up: Repo path: repos/poky_thud
+distro-u2up: Preparing "repos/poky_thud" subdir (from "git://git.yoctoproject.org/poky")!
+distro-u2up: Extracting "poky" from "/home/samo/u2up-yocto-shared/downloads/poky_thud_git.tar.gz"!
+distro-u2up: Prepared meta layer path: repos/poky_thud/meta
+distro-u2up: ---
+distro-u2up: Prepare repo "poky" for layer "meta-poky"
+distro-u2up: Repo path: repos/poky_thud
+distro-u2up: Prepared meta-poky layer path: repos/poky_thud/meta-poky
+distro-u2up: ---
+distro-u2up: Prepare repo "poky" for layer "meta-yocto-bsp"
+distro-u2up: Repo path: repos/poky_thud
+distro-u2up: Prepared meta-yocto-bsp layer path: repos/poky_thud/meta-yocto-bsp
+distro-u2up: ---
+distro-u2up: Prepare machine layer repo for "qemux86"!
+distro-u2up: ------------------------------
+distro-u2up: Repo path: repos/poky_thud
+distro-u2up: Prepared machine layer path: repos/poky_thud/meta
+distro-u2up: ---
+distro-u2up: Prepare build tree for machine "qemux86"!
+distro-u2up: ------------------------------
+distro-u2up: Build directory: u2up/build.qemux86_thud
+distro-u2up: Done OK!
+distro-u2up: Setting build environment for "qemux86"!
+
+### Shell environment set up for builds. ###
+...
 
 Find built images in "u2up/build.qemux86_thud/tmp/deploy/images/qemux86/" for example:
 - bzImage -> bzImage--4.14.76+git0+3435617380_2c5caa7e84-r0-qemux86-20181125204414.bin
@@ -85,6 +115,25 @@ Find built images in "u2up/build.qemux86_thud/tmp/deploy/images/qemux86/" for ex
 - u2up-image-full-cmdline-qemux86.tar.bz2 -> u2up-image-full-cmdline-qemux86-20181125204414.rootfs.tar.bz2
 - u2up-image-full-cmdline-qemux86.testdata.json -> u2up-image-full-cmdline-qemux86-20181125204414.testdata.json
 
+
+To inspect which machines are currently available for the build, run:
+$ ./distro --machines
+intel-corei7-64
+qemux86
+raspberrypi3-64
+...
+
+To add another (out-of-this-project) machine, create and edit the:
+"addons/machines-conf" and "addons/repos-conf".
+
+To add your own layers, create and edit:
+"addons/layers-conf" and "addons/repos-conf".
+(see comments at the end of the "distro-conf/u2up-conf_default").
+
+All git repositories defined in "distro-conf/repos-conf" and in
+"addons/repos-conf" are being automatically cloned and archived in
+the shared downloads directory, if required by used layers.
+
 Prerequisites:
 --------------
 Check Yocto documentation regarding host HW/SW requirements.
@@ -96,5 +145,5 @@ Test run for "qemux86" target:
 
 
 ---
-End!
+bye!)
 
