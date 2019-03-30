@@ -374,13 +374,18 @@ function add_bblayers ()
 #		echo "repo_branch_var=${repo_branch_var}"
 #		echo "repo_branch=${repo_branch}"
 
-		if [ -z "${name_layer_path}" ]; then
-			layer_path="${U2UP_REPOS_DIR}/${repo_name}_${repo_branch}"
+		if [ -n "${repo_url}" ]; then
+			if [ -z "${name_layer_path}" ]; then
+				layer_path="${U2UP_REPOS_DIR}/${repo_name}_${repo_branch}"
+			else
+				layer_path="${U2UP_REPOS_DIR}/${repo_name}_${repo_branch}/${name_layer_path}"
+			fi
 		else
-			layer_path="${U2UP_REPOS_DIR}/${repo_name}_${repo_branch}/${name_layer_path}"
+			layer_path="${U2UP_REPOS_DIR}/${name_layer_path}"
 		fi
 		if [ ! -d "${layer_path}" ]; then
-			echo $pre"ERROR: Missing layer path: ${layer_path}"
+			echo $pre"ERROR - Missing layer path: ${layer_path}"
+			echo
 			return 1
 		fi
 
@@ -422,8 +427,18 @@ function generate_buildir ()
 	echo "# THIS IS GENERATED FILE - DO NOT MAKE CHANGES HERE!" > ${MACH_BUILDIR}/conf/bblayers.conf
 	cat ${U2UP_DIR}/conf/build_bblayers.conf_template >> ${MACH_BUILDIR}/conf/bblayers.conf
 	add_bblayers U2UP_BASE_LAYERS ${MACH_BUILDIR}/conf/bblayers.conf
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		return $ret
+	fi
 	if [ -n "${U2UP_ADDONS_LAYERS}" ]; then
 		add_bblayers U2UP_ADDONS_LAYERS ${MACH_BUILDIR}/conf/bblayers.conf
+		ret=$?
+		if [ $ret -ne 0 ]; then
+			return $ret
+		fi
+	else
+		echo $pre"INFO - addons not layers not defined!"
 	fi
 	if [ -z "${U2UP_MACH_PATH}" ]; then
 		MACH_PATH="${U2UP_REPOS_DIR}/${MACH_LAYER}_${MACH_BRANCH}"
@@ -480,26 +495,31 @@ function prepare_layers ()
 #		echo "repo_url=${repo_url}"
 #		echo "repo_branch_var=${repo_branch_var}"
 #		echo "repo_branch=${repo_branch}"
-		check_repo $name_layer_repo $repo_branch
-		ret=$?
-		if [ $ret -ne 0 ]; then
-			prepare_repo $name_layer_repo $repo_branch $repo_url
+		if [ -n "${repo_url}" ]; then
+			check_repo $name_layer_repo $repo_branch
 			ret=$?
+			if [ $ret -ne 0 ]; then
+				prepare_repo $name_layer_repo $repo_branch $repo_url
+				ret=$?
 				if [ $ret -ne 0 ]; then
-				echo $pre"ERROR - Failed!"
-				echo
-				return $ret
+					echo $pre"ERROR - Failed!"
+					echo
+					return $ret
+				fi
 			fi
-		fi
-		if [ -z "${name_layer_path}" ]; then
-			layer_path="${U2UP_REPOS_DIR}/${repo_name}_${repo_branch}"
+			if [ -z "${name_layer_path}" ]; then
+				layer_path="${U2UP_REPOS_DIR}/${repo_name}_${repo_branch}"
+			else
+				layer_path="${U2UP_REPOS_DIR}/${repo_name}_${repo_branch}/${name_layer_path}"
+			fi
 		else
-			layer_path="${U2UP_REPOS_DIR}/${repo_name}_${repo_branch}/${name_layer_path}"
+			layer_path="${U2UP_REPOS_DIR}/${name_layer_path}"
 		fi
 		if [ -d "${layer_path}" ]; then
 			echo $pre"Prepared ${name} layer path: ${layer_path}"
 		else
-			echo $pre"Missing ${name} layer path: ${layer_path}"
+			echo $pre"ERROR - Missing ${name} layer path: ${layer_path}"
+			echo
 			return 1
 		fi
 		echo $pre"---"
@@ -521,8 +541,24 @@ function prepare_machine ()
 	fi
 
 	echo $pre"Prepare base layers repos!"
-	echo $pre"--------------------------"
+	echo $pre"-------------------------"
 	prepare_layers U2UP_BASE_LAYERS
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		return $ret
+	fi
+
+	if [ -n "${U2UP_ADDONS_LAYERS}" ]; then
+		echo $pre"Prepare addons layers repos!"
+		echo $pre"---------------------------"
+		prepare_layers U2UP_ADDONS_LAYERS
+		ret=$?
+		if [ $ret -ne 0 ]; then
+			return $ret
+		fi
+	else
+		echo $pre"INFO - addons not layers not defined!"
+	fi
 
 	echo $pre"Prepare machine layer repo for \"${U2UP_MACHINE}\"!"
 	echo $pre"------------------------------"
@@ -531,7 +567,7 @@ function prepare_machine ()
 	if [ $ret -ne 0 ]; then
 		prepare_repo $U2UP_MACH_REPO $U2UP_MACH_REPO_BRANCH $U2UP_MACH_REPO_URL
 		ret=$?
-			if [ $ret -ne 0 ]; then
+		if [ $ret -ne 0 ]; then
 			echo $pre"ERROR - Failed!"
 			echo
 			return $ret
