@@ -423,6 +423,10 @@ function generate_buildir ()
 	echo "# THIS IS GENERATED FILE - DO NOT MAKE CHANGES HERE!" > ${MACH_BUILDIR}/conf/local.conf
 	cat ${U2UP_DIR}/conf/build_local.conf_template >> ${MACH_BUILDIR}/conf/local.conf
 	echo "MACHINE ??= \"${MACH_NAME}\"" >> ${MACH_BUILDIR}/conf/local.conf
+	if [ -e "${U2UP_ADDONS_DIR}/local-addons.conf" ]; then
+		echo "" >> ${MACH_BUILDIR}/conf/local.conf
+		echo "require \${YOCTODIR}/${U2UP_ADDONS_DIR}/local-addons.conf" >> ${MACH_BUILDIR}/conf/local.conf
+	fi
 	cp -p ${U2UP_DIR}/conf/templateconf.cfg ${MACH_BUILDIR}/conf/
 	echo "# THIS IS GENERATED FILE - DO NOT MAKE CHANGES HERE!" > ${MACH_BUILDIR}/conf/bblayers.conf
 	cat ${U2UP_DIR}/conf/build_bblayers.conf_template >> ${MACH_BUILDIR}/conf/bblayers.conf
@@ -615,19 +619,19 @@ function build_machine ()
 		return $ret
 	fi
 
-	echo $pre"Setting build environment for \"${U2UP_MACHINE}\"!"
-	source ${U2UP_REPOS_DIR}/${U2UP_POKY_REPO_NAME}_${U2UP_POKY_REPO_BRANCH}/oe-init-build-env ${U2UP_DIR}/build.${U2UP_MACHINE}_${U2UP_POKY_REPO_BRANCH}
-
 	export U2UP_REPOS_DIR
 	export U2UP_POKY_REPO_BRANCH
 	export U2UP_YOCTO_SHARED
 	export U2UP_MACH_BUILDIR="${MACH_BUILDIR}"
 	export BB_ENV_EXTRAWHITE="$BB_ENV_EXTRAWHITE U2UP_REPOS_DIR U2UP_POKY_REPO_BRANCH U2UP_YOCTO_SHARED U2UP_MACH_BUILDIR"
-	echo $pre"BB_ENV_EXTRAWHITE=${BB_ENV_EXTRAWHITE}"
+	echo $pre"Added environment to BB_ENV_EXTRAWHITE:"
 	echo $pre"U2UP_REPOS_DIR=${U2UP_REPOS_DIR}"
 	echo $pre"U2UP_POKY_REPO_BRANCH=${U2UP_POKY_REPO_BRANCH}"
 	echo $pre"U2UP_YOCTO_SHARED=${U2UP_YOCTO_SHARED}"
 	echo $pre"U2UP_MACH_BUILDIR=${U2UP_MACH_BUILDIR}"
+
+	echo $pre"Setting build environment for \"${U2UP_MACHINE}\"!"
+	source ${U2UP_REPOS_DIR}/${U2UP_POKY_REPO_NAME}_${U2UP_POKY_REPO_BRANCH}/oe-init-build-env ${U2UP_DIR}/build.${U2UP_MACHINE}_${U2UP_POKY_REPO_BRANCH}
 
 	if [ -n "${1}" ] && [ "${1}" == "bbsh" ]; then
 		echo $pre"Entering U2UP bitbake shell for \"${U2UP_MACHINE}\"!"
