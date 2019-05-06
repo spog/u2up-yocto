@@ -1,0 +1,44 @@
+diff -Nurp kernel-source_orig/drivers/char/ttyprintk.c kernel-source/drivers/char/ttyprintk.c
+--- kernel-source_orig/drivers/char/ttyprintk.c	2019-05-04 16:19:23.779304769 +0200
++++ kernel-source/drivers/char/ttyprintk.c	2019-05-05 10:23:59.859999378 +0200
+@@ -78,8 +78,6 @@ static int tpk_tioccons_req = 0;
+ static int tpk_tioccons_set(struct tty_driver *ttydrv)
+ {
+ 	const char *name = "tpkfs";
+-	struct qstr this;
+-	struct path path;
+ 	int ret = -ENOMEM;
+ 
+ 	tpkfs_inodp = tpkfs_inode_new();
+@@ -90,22 +88,8 @@ static int tpk_tioccons_set(struct tty_d
+ 	}
+ 	init_special_inode(tpkfs_inodp, S_IFCHR | 0600, ttydrv->cdevs[0]->dev);
+ 
+-	this.name = name;
+-	this.len = strlen(name);
+-	this.hash = 0;
+-	path.dentry = d_alloc_pseudo(tpkfs_mnt->mnt_sb, &this);
+-	if (!path.dentry) {
+-		ret = -ENOMEM;
+-		pr_err("ttyprintk: d_alloc_pseudo() path.dentry allocation failed (%d)\n", ret);
+-		goto err_dentry_tioccons;
+-	}
+-
+-	path.mnt = mntget(tpkfs_mnt);
+ 	ihold(tpkfs_inodp);
+-
+-	d_instantiate(path.dentry, tpkfs_inodp);
+-
+-	tpkfs_filp = alloc_file(&path, OPEN_FMODE(FMODE_WRITE | FMODE_READ), ttydrv->cdevs[0]->ops);
++	tpkfs_filp = alloc_file_pseudo(tpkfs_inodp, tpkfs_mnt, name, OPEN_FMODE(FMODE_WRITE | FMODE_READ), ttydrv->cdevs[0]->ops);
+ 	ret = PTR_ERR_OR_ZERO(tpkfs_filp);
+ 	if (ret) {
+ 		pr_err("ttyprintk: alloc_file() tpkfs_filp allocation failed (%d)\n", ret);
+@@ -144,7 +128,6 @@ err_ioctl_tioccons:
+ 	tpkfs_filp->f_op->release(tpkfs_inodp, tpkfs_filp);
+ err_open_tioccons:
+ err_file_tioccons:
+-	path_put(&path);
+ err_dentry_tioccons:
+ 	tpkfs_inode_free(tpkfs_inodp);
+ err_inode_tioccons:
