@@ -14,17 +14,18 @@ meta_intel_REPO_VERSION="${poky_REPO_VERSION}"
 meta_raspberrypi_REPO_NAME="meta-raspberrypi"
 meta_raspberrypi_REPO_URL="git://git.yoctoproject.org/${meta_raspberrypi_REPO_NAME}"
 meta_raspberrypi_REPO_BRANCH="${poky_REPO_BRANCH}"
-meta_raspberrypi_REPO_VERSION="${poky_REPO_VERSION}"
+meta_raspberrypi_REPO_VERSION="c71d79efc5a06a0c896c278c94f5b14413bb4d69"
 
 # Meta-openembedded repo:
 meta_openembedded_REPO_NAME="meta-openembedded"
 meta_openembedded_REPO_URL="git://git.openembedded.org/${meta_openembedded_REPO_NAME}"
 meta_openembedded_REPO_BRANCH="${poky_REPO_BRANCH}"
-meta_openembedded_REPP_VERSION="${poky_REPO_VERSION}"
+meta_openembedded_REPO_VERSION="4cd3a39f22a2712bfa8fc657d09fe2c7765a4005"
 
 # Any additional repos may be added to this file:
 # NOTE!
-# If you do not want to extend this versioned file, add your extra repos in "extra-conf" file like:
+# If you do not want to extend this versioned file, add your
+# additional repos in "addons/repos-conf" file like:
 #
 # Sample repo:
 #sample_repo_REPO_NAME="sample-repo"

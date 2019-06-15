@@ -12,17 +12,20 @@
 #set -x
 #set -e
 
+pre="$(basename  $0)-u2up: "
+pre_delimit="------------"
+
 function usage_help ()
 {
+	echo $pre_delimit
 	echo "Usage: "$(basename  $0)" [MACHINE COMMAND]|[OPTIONS]"
 	echo " MACHINE := qemux86|intel-corei7-64|raspberrypi3-64|..."
 	echo " COMMAND := prepare|bbsh|bitbake [args]"
 	echo " OPTIONS := {--help|-h}|{--layers}|{--machines}|{--repos}"
-	echo
+	echo $pre_delimit
 	return
 }
 
-pre="$(basename  $0)-u2up: "
 U2UP_OPTIONS=""
 U2UP_COMMAND=""
 U2UP_MACHINE=""
@@ -35,7 +38,6 @@ do
 			U2UP_COMMAND=$1
 		else
 			echo $pre"ERROR - Wrong syntax!"
-			echo
 			usage_help
 			exit 1
 		fi
@@ -53,7 +55,6 @@ do
 		else
 			if [ "x$U2UP_COMMAND" != "xbitbake" ]; then
 				echo $pre"ERROR - Unknown option: "$1
-				echo
 				usage_help
 				exit 1
 			else
@@ -67,14 +68,12 @@ done
 
 if [ -z "$U2UP_COMMAND" ] && [ -z "$U2UP_OPTION" ]; then
 	echo $pre"ERROR - Missing COMMAND!"
-	echo
 	usage_help
 	exit 1
 fi
 
 if [ -z "$U2UP_MACHINE" ] && [ -z "$U2UP_OPTION" ]; then
 	echo $pre"ERROR - Missing MACHINE!"
-	echo
 	usage_help
 	exit 1
 fi
@@ -85,7 +84,7 @@ U2UP_MACHINE_PREFIX=${U2UP_MACHINE//-/_}
 
 if [ ! -e "distro-conf/repos-conf" ]; then
 	echo $pre"ERROR - Missing configuration file distro-conf/repos-conf!"
-	echo
+	echo $pre_delimit
 	exit 1
 fi
 source distro-conf/repos-conf
@@ -98,7 +97,7 @@ if [ ! -e "distro-conf/u2up-conf" ]; then
 	echo $pre"and set your own absolute writable path for all your downloads and"
 	echo $pre"shared sstate-cache in the U2UP_YOCTO_SHARED variable of your new"
 	echo $pre"distro-conf/u2up-conf configuration file!"
-	echo
+	echo $pre_delimit
 	exit 1
 fi
 source distro-conf/u2up-conf
@@ -108,19 +107,19 @@ if [ -z "${U2UP_YOCTO_SHARED}" ]; then
 	echo $pre"Set your own absolute writable path for all your downloads and"
 	echo $pre"shared sstate-cache in the U2UP_YOCTO_SHARED variable of your new"
 	echo $pre"distro-conf/u2up-conf configuration file!"
-	echo
+	echo $pre_delimit
 	exit 1
 fi
 if [ ! -d "${U2UP_YOCTO_SHARED}" ]; then
 	echo $pre"ERROR - U2UP_YOCTO_SHARED path \"${U2UP_YOCTO_SHARED}\" does not exist!"
-	echo
+	echo $pre_delimit
 	exit 1
 fi
 U2UP_DOWNLOADS="${U2UP_YOCTO_SHARED}/downloads"
 
 if [ ! -e "distro-conf/machines-conf" ]; then
 	echo $pre"ERROR - Missing configuration file distro-conf/machines-conf!"
-	echo
+	echo $pre_delimit
 	exit 1
 fi
 source distro-conf/machines-conf
@@ -161,11 +160,11 @@ if [ -n "$U2UP_OPTION" ]; then
 		;;
 	*)
 		echo $pre"ERROR - Unknown option: "$U2UP_OPTION
-		echo
 		usage_help
 		exit 1
 		;;
 	esac
+	echo $pre_delimit
 	exit 0
 fi
 
@@ -200,18 +199,17 @@ U2UP_MACH_REPO_VERSION=${!U2UP_MACH_REPO_VERSION_var}
 #echo "U2UP_MACH_REPO_URL=${U2UP_MACH_REPO_URL}"
 #echo "U2UP_MACH_REPO_BRANCH=${U2UP_MACH_REPO_BRANCH}"
 #echo "U2UP_MACH_REPO_VERSION=${U2UP_MACH_REPO_VERSION}"
-#echo
+echo $pre_delimit
 
 if [ -z "${U2UP_MACH_NAME}" ] && [ "${U2UP_MACHINE/#qemu/}" = "${U2UP_MACHINE}" ]; then
 	echo $pre"ERROR - Unknown MACHINE (check: distro-conf/machines-conf)!"
-	echo
 	usage_help
 	exit 1
 fi
 
 if [ -z "${U2UP_BASE_LAYERS}" ]; then
 	echo $pre"ERROR - No layers enabled in distro-conf/u2up-conf!"
-	echo
+	echo $pre_delimit
 	exit 1
 fi
 
@@ -233,6 +231,7 @@ function check_repo ()
 	ret=1
 	NAME=$1
 	BRANCH=$2
+	VERSION=$3
 
 	# Check if no args (first arg empty) - dummy check; not an error:
 	if [ -z "$NAME" ]; then
@@ -254,23 +253,36 @@ function check_repo ()
 	echo $pre"Repo path: ${U2UP_REPOS_DIR}/${NAME}_${BRANCH}"
 	if [ -d "${U2UP_REPOS_DIR}/${NAME}_${BRANCH}" ]; then
 		pushd ${U2UP_REPOS_DIR}/${NAME}_${BRANCH} &> /dev/null
-		git checkout $BRANCH &> /dev/null
-		ret=$?
+		if [ -z "${VERSION}" ]; then
+			git checkout $BRANCH &> /dev/null
+			ret=$?
+		else
+			git checkout --detach $VERSION &> /dev/null
+			ret=$?
+		fi
 		popd &> /dev/null
 		if [ $ret -ne 0 ]; then
-			echo $pre"ERROR - check_repo () Git branch test checkout error - Remove: ${U2UP_REPOS_DIR}/${NAME}_${BRANCH}!"
-			rm -rf ${U2UP_REPOS_DIR}/${NAME}_$BRANCH
+			echo $pre"ERROR - check_repo () Git branch test checkout error - To be removed: ${U2UP_REPOS_DIR}/${NAME}_${BRANCH}!"
 		else
-			if [ ! -f "${U2UP_DOWNLOADS}/${NAME}_${BRANCH}_git.tar.gz" ]; then
-				echo $pre"Archiving \"${NAME}_${BRANCH}\" into \"${U2UP_DOWNLOADS}/${NAME}_${BRANCH}_git.tar.gz\"!"
-				pushd ${U2UP_REPOS_DIR} &> /dev/null
-				tar czf ${U2UP_DOWNLOADS}/${NAME}_${BRANCH}_git.tar.gz ${NAME}_$BRANCH
-				if [ $? -ne 0 ]; then
-					echo $pre"WARNING - prepare failed (tar czf: ${NAME}_${BRANCH} subdir not archived)!"
-					echo
+			pushd ${U2UP_REPOS_DIR} &> /dev/null
+			if [ -z "${VERSION}" ]; then
+				if [ ! -f "${U2UP_DOWNLOADS}/${NAME}_${BRANCH}_git.tar.gz" ]; then
+					echo $pre"Archiving \"${NAME}_${BRANCH}\" into \"${U2UP_DOWNLOADS}/${NAME}_${BRANCH}_git.tar.gz\"!"
+					tar czf ${U2UP_DOWNLOADS}/${NAME}_${BRANCH}_git.tar.gz ${NAME}_$BRANCH
+					if [ $? -ne 0 ]; then
+						echo $pre"WARNING - prepare failed (tar czf: ${NAME}_${BRANCH} subdir not archived)!"
+					fi
 				fi
-				popd &> /dev/null
+			else
+				if [ ! -f "${U2UP_DOWNLOADS}/${NAME}_${BRANCH}_${VERSION}_git.tar.gz" ]; then
+					echo $pre"Archiving \"${NAME}_${BRANCH}\" into \"${U2UP_DOWNLOADS}/${NAME}_${BRANCH}_${VERSION}_git.tar.gz\"!"
+					tar czf ${U2UP_DOWNLOADS}/${NAME}_${BRANCH}_${VERSION}_git.tar.gz ${NAME}_$BRANCH
+					if [ $? -ne 0 ]; then
+						echo $pre"WARNING - prepare failed (tar czf: ${NAME}_${BRANCH} subdir not archived)!"
+					fi
+				fi
 			fi
+			popd &> /dev/null
 		fi
 	fi
 	return $ret 
@@ -280,17 +292,24 @@ function check_repo ()
 function prepare_repo ()
 {
 	ret=1
-	NAME=$1
-	BRANCH=$2
-	REPO_URL=$3
+	REPO_URL=$1
+	NAME=$2
+	BRANCH=$3
+	VERSION=$4
 
-	# Check if no args (first arg empty) - dummy check; not an error:
-	if [ -z "$NAME" ]; then
-		return 0
+	# Check args:
+	if [ -z "$REPO_URL" ]; then
+		echo $pre"ERROR - prepare_repo () Missing repo URL!"
+		return $ret
 	fi
 
-	if [ -z "$BRANCH" ] || [ -z "$REPO_URL" ]; then
-		echo $pre"ERROR - check_repo () Invalid params!"
+	if [ -z "$NAME" ]; then
+		echo $pre"ERROR - prepare_repo () Missing repo NAME!"
+		return $ret
+	fi
+
+	if [ -z "$BRANCH" ]; then
+		echo $pre"ERROR - prepare_repo () Missing repo BRANCH!"
 		return $ret
 	fi
 
@@ -302,33 +321,52 @@ function prepare_repo ()
 	echo $pre"Preparing \"${U2UP_REPOS_DIR}/${NAME}_${BRANCH}\" subdir (from \"$REPO_URL\")!"
 	pushd ${U2UP_REPOS_DIR} &> /dev/null
 	if [ ! -d "${NAME}" ] && [ ! -d "${NAME}_${BRANCH}" ]; then
-		if [ -f "${U2UP_DOWNLOADS}/${NAME}_${BRANCH}_git.tar.gz" ]; then
-			echo $pre"Extracting \"${NAME}\" from \"${U2UP_DOWNLOADS}/${NAME}_${BRANCH}_git.tar.gz\"!"
-			tar xzf ${U2UP_DOWNLOADS}/${NAME}_${BRANCH}_git.tar.gz
-			ret=$?
-			if [ $ret -ne 0 ]; then
-				echo $pre"ERROR - prepare failed (tar xzf: ${NAME}_${BRANCH} subdir not ok)!"
-				echo
+		if [ -z "$VERSION" ]; then
+			if [ -f "${U2UP_DOWNLOADS}/${NAME}_${BRANCH}_git.tar.gz" ]; then
+				echo $pre"Extracting \"${NAME}\" from \"${U2UP_DOWNLOADS}/${NAME}_${BRANCH}_git.tar.gz\"!"
+				tar xzf ${U2UP_DOWNLOADS}/${NAME}_${BRANCH}_git.tar.gz
+				ret=$?
+				if [ $ret -ne 0 ]; then
+					echo $pre"ERROR - prepare failed (tar xzf: ${NAME}_${BRANCH} subdir not ok - removing)!"
+				fi
+			else
+				git clone --single-branch -b $BRANCH $REPO_URL ${NAME}_$BRANCH
+				ret=$?
+				if [ $ret -ne 0 ]; then
+					echo $pre"ERROR - prepare failed (git clone: ${NAME}_${BRANCH} subdir not ok)!"
+					rm -rf ${NAME}_${BRANCH}
+				else
+					popd &> /dev/null
+					check_repo $NAME $BRANCH
+					ret=$?
+					pushd ${U2UP_REPOS_DIR} &> /dev/null
+				fi
 			fi
 		else
-			git clone --single-branch -b $BRANCH $REPO_URL ${NAME}_$BRANCH
-			ret=$?
-			if [ $ret -ne 0 ]; then
-				echo $pre"ERROR - prepare failed (git clone: ${NAME}_${BRANCH} subdir not ok)!"
-				echo
-			else
-				popd &> /dev/null
-				check_repo $NAME $BRANCH
+			if [ -f "${U2UP_DOWNLOADS}/${NAME}_${BRANCH}_${VERSION}_git.tar.gz" ]; then
+				echo $pre"Extracting \"${NAME}\" from \"${U2UP_DOWNLOADS}/${NAME}_${BRANCH}_${VERSION}_git.tar.gz\"!"
+				tar xzf ${U2UP_DOWNLOADS}/${NAME}_${BRANCH}_${VERSION}_git.tar.gz
 				ret=$?
-				pushd ${U2UP_REPOS_DIR} &> /dev/null
+				if [ $ret -ne 0 ]; then
+					echo $pre"ERROR - prepare failed (tar xzf: ${NAME}_${BRANCH} subdir not ok)!"
+				fi
+			else
+				git clone --single-branch -b $BRANCH $REPO_URL ${NAME}_$BRANCH
+				ret=$?
+				if [ $ret -ne 0 ]; then
+					echo $pre"ERROR - prepare failed (git clone: ${NAME}_${BRANCH} subdir not ok - removing)!"
+					rm -rf ${NAME}_${BRANCH}
+				else
+					popd &> /dev/null
+					check_repo $NAME $BRANCH $VERSION
+					ret=$?
+					pushd ${U2UP_REPOS_DIR} &> /dev/null
+				fi
 			fi
-		fi
-		if [ $ret -ne 0 ]; then
-			rm -rf ${NAME}_${BRANCH}
 		fi
 	else
 		popd &> /dev/null
-		check_repo $NAME $BRANCH
+		check_repo $NAME $BRANCH $VERSION
 		ret=$?
 		pushd ${U2UP_REPOS_DIR} &> /dev/null
 	fi
@@ -385,7 +423,6 @@ function add_bblayers ()
 		fi
 		if [ ! -d "${layer_path}" ]; then
 			echo $pre"ERROR - Missing layer path: ${layer_path}"
-			echo
 			return 1
 		fi
 
@@ -442,7 +479,7 @@ function generate_buildir ()
 			return $ret
 		fi
 	else
-		echo $pre"INFO - addons not layers not defined!"
+		echo $pre"INFO - addons layers not defined!"
 	fi
 	if [ -z "${U2UP_MACH_PATH}" ]; then
 		MACH_PATH="${U2UP_REPOS_DIR}/${MACH_LAYER}_${MACH_BRANCH}"
@@ -492,6 +529,8 @@ function prepare_layers ()
 		repo_url=${!repo_url_var}
 		repo_branch_var=${repo_prefix}_REPO_BRANCH
 		repo_branch=${!repo_branch_var}
+		repo_version_var=${repo_prefix}_REPO_VERSION
+		repo_version=${!repo_version_var}
 #		echo "repo_prefix=${repo_prefix}"
 #		echo "repo_name_var=${repo_name_var}"
 #		echo "repo_name=${repo_name}"
@@ -499,15 +538,16 @@ function prepare_layers ()
 #		echo "repo_url=${repo_url}"
 #		echo "repo_branch_var=${repo_branch_var}"
 #		echo "repo_branch=${repo_branch}"
+#		echo "repo_version_var=${repo_version_var}"
+#		echo "repo_version=${repo_version}"
 		if [ -n "${repo_url}" ]; then
-			check_repo $name_layer_repo $repo_branch
+			check_repo $name_layer_repo $repo_branch $repo_version
 			ret=$?
 			if [ $ret -ne 0 ]; then
-				prepare_repo $name_layer_repo $repo_branch $repo_url
+				prepare_repo $repo_url $name_layer_repo $repo_branch $repo_version
 				ret=$?
 				if [ $ret -ne 0 ]; then
 					echo $pre"ERROR - Failed!"
-					echo
 					return $ret
 				fi
 			fi
@@ -523,10 +563,9 @@ function prepare_layers ()
 			echo $pre"Prepared ${name} layer path: ${layer_path}"
 		else
 			echo $pre"ERROR - Missing ${name} layer path: ${layer_path}"
-			echo
 			return 1
 		fi
-		echo $pre"---"
+		echo $pre_delimit
 	done
 
 	return 0
@@ -561,19 +600,18 @@ function prepare_machine ()
 			return $ret
 		fi
 	else
-		echo $pre"INFO - addons not layers not defined!"
+		echo $pre"INFO - addons layers not defined!"
 	fi
 
 	echo $pre"Prepare machine layer repo for \"${U2UP_MACHINE}\"!"
 	echo $pre"------------------------------"
-	check_repo $U2UP_MACH_REPO $U2UP_MACH_REPO_BRANCH
+	check_repo $U2UP_MACH_REPO $U2UP_MACH_REPO_BRANCH $U2UP_MACH_REPO_VERSION
 	ret=$?
 	if [ $ret -ne 0 ]; then
-		prepare_repo $U2UP_MACH_REPO $U2UP_MACH_REPO_BRANCH $U2UP_MACH_REPO_URL
+		prepare_repo $U2UP_MACH_REPO_URL $U2UP_MACH_REPO $U2UP_MACH_REPO_BRANCH $U2UP_MACH_REPO_VERSION
 		ret=$?
 		if [ $ret -ne 0 ]; then
 			echo $pre"ERROR - Failed!"
-			echo
 			return $ret
 		fi
 	fi
@@ -588,7 +626,7 @@ function prepare_machine ()
 		echo $pre"ERROR: Missing machine layer path: ${layer_path}"
 		return 1
 	fi
-	echo $pre"---"
+	echo $pre_delimit
 
 	echo $pre"Prepare build tree for machine \"${U2UP_MACHINE}\"!"
 	echo $pre"------------------------------"
@@ -596,7 +634,6 @@ function prepare_machine ()
 	ret=$?
 	if [ $ret -ne 0 ]; then
 		echo $pre"ERROR - Failed!"
-		echo
 		return $ret
 	fi
 
@@ -615,7 +652,6 @@ function build_machine ()
 	ret=$?
 	if [ $ret -ne 0 ]; then
 		echo $pre"ERROR - Project prepare machine FAILED!"
-		echo
 		return $ret
 	fi
 
@@ -664,6 +700,7 @@ bbsh|bitbake)
 	ret=$?
 	;;
 esac
+echo $pre_delimit
 
 exit $ret
 
