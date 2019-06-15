@@ -21,9 +21,9 @@ meta_yocto_bsp_LAYER_REPO="poky"
 meta_yocto_bsp_LAYER_PATH="${meta_yocto_bsp_LAYER_NAME}"
 
 # NOTE!
-# Define source repos in "repos-conf" or "addons/repos-conf".
-# Define machine layers in "machines-conf" or "addons/machines-conf".
-# Additional layers should be defined in "addons/layers-conf" file like
+# Define source repos in "repos-conf" or "../addons/repos-conf".
+# Define machine layers in "machines-conf" or "../addons/machines-conf".
+# Additional layers should be defined in "../addons/layers-conf" file like
 # this:
 #
 #U2UP_ADDONS_LAYERS="layer_a layer_b ..."

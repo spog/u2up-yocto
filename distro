@@ -92,7 +92,7 @@ source distro-conf/repos-conf
 # Must be sourced after the "repos-conf", because it vars refere to it!
 if [ ! -e "distro-conf/u2up-conf" ]; then
 	echo $pre"ERROR - Missing configuration file distro-conf/u2up-conf!"
-	echo
+	echo $pre_delimit
 	echo $pre"First copy distro-conf/u2up-conf_default into distro-conf/u2up-conf"
 	echo $pre"and set your own absolute writable path for all your downloads and"
 	echo $pre"shared sstate-cache in the U2UP_YOCTO_SHARED variable of your new"
@@ -103,7 +103,7 @@ fi
 source distro-conf/u2up-conf
 if [ -z "${U2UP_YOCTO_SHARED}" ]; then
 	echo $pre"ERROR - Missing configuration value U2UP_YOCTO_SHARED in distro-conf/u2up-conf!"
-	echo
+	echo $pre_delimit
 	echo $pre"Set your own absolute writable path for all your downloads and"
 	echo $pre"shared sstate-cache in the U2UP_YOCTO_SHARED variable of your new"
 	echo $pre"distro-conf/u2up-conf configuration file!"
@@ -133,7 +133,7 @@ if [ -n "${U2UP_ADDONS_DIR}" ]; then
 		source ${U2UP_ADDONS_DIR}/layers-conf
 		if [ -z "${U2UP_ADDONS_LAYERS}" ]; then
 			echo $pre"WARNING - addons/layers-conf exists, but no layers added!"
-			echo
+			echo $pre_delimit
 		fi
 	fi
 	if [ -e "${U2UP_ADDONS_DIR}/machines-conf" ]; then
@@ -144,16 +144,19 @@ fi
 if [ -n "$U2UP_OPTION" ]; then
 	case $U2UP_OPTION in
 	--layers)
+		echo $pre_delimit
 		for var_name in $(set | grep "_LAYER_NAME" | sed s/\=.*//); do
 			echo ${!var_name}
 		done
 		;;
 	--machines)
+		echo $pre_delimit
 		for var_name in $(set | grep "_MACH_NAME" | sed s/\=.*//); do
 			echo ${!var_name}
 		done
 		;;
 	--repos)
+		echo $pre_delimit
 		for var_name in $(set | grep "_REPO_NAME" | sed s/\=.*//); do
 			echo ${!var_name}
 		done

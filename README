@@ -30,21 +30,23 @@ Initial taste of the "distro" command:
 $ cd u2up-yocto
 $ ./distro
 distro-u2up: ERROR - Missing COMMAND!
-
+------------
 Usage: distro [MACHINE COMMAND]|[OPTIONS]
  MACHINE := qemux86|intel-corei7-64|raspberrypi3-64|...
  COMMAND := prepare|bbsh|bitbake [args]
  OPTIONS := {--help|-h}|{--layers}|{--machines}|{--repos}
+------------
 ...
 
 Go for default qemux86 build:
 $ ./distro qemux86 bitbake
 distro-u2up: ERROR - Missing configuration file distro-conf/u2up-conf!
-
+------------
 distro-u2up: First copy distro-conf/u2up-conf_default into distro-conf/u2up-conf
 distro-u2up: and set your own absolute writable path for all your downloads and
 distro-u2up: shared sstate-cache in the U2UP_YOCTO_SHARED variable of your new
 distro-u2up: distro-conf/u2up-conf configuration file!
+------------
 ...
 
 Create your "distro-conf/u2up-conf" file:
@@ -54,10 +56,11 @@ $ cp distro-conf/u2up-conf_default distro-conf/u2up_conf
 Second try: go for default qemux86 build:
 $ ./distro qemux86 bitbake
 distro-u2up: ERROR - Missing configuration value U2UP_YOCTO_SHARED in distro-conf/u2up-conf!
-
+------------
 distro-u2up: Set your own absolute writable path for all your downloads and
 distro-u2up: shared sstate-cache in the U2UP_YOCTO_SHARED variable of your new
 distro-u2up: distro-conf/u2up-conf configuration file!
+------------
 ...
 
 Set your writable shared absolute path:
@@ -66,31 +69,41 @@ Set your writable shared absolute path:
 
 Third try: and off you go (for default qemux86 build, which may take a while):
 $ ./distro qemux86 bitbake
+------------
 distro-u2up: Prepare base layers repos!
-distro-u2up: --------------------------
+distro-u2up: -------------------------
 distro-u2up: Prepare repo "poky" for layer "meta"
 distro-u2up: Repo path: repos/poky_thud
-distro-u2up: Preparing "repos/poky_thud" subdir (from "git://git.yoctoproject.org/poky")!
-distro-u2up: Extracting "poky" from "/home/samo/u2up-yocto-shared/downloads/poky_thud_git.tar.gz"!
 distro-u2up: Prepared meta layer path: repos/poky_thud/meta
-distro-u2up: ---
+------------
 distro-u2up: Prepare repo "poky" for layer "meta-poky"
 distro-u2up: Repo path: repos/poky_thud
 distro-u2up: Prepared meta-poky layer path: repos/poky_thud/meta-poky
-distro-u2up: ---
+------------
 distro-u2up: Prepare repo "poky" for layer "meta-yocto-bsp"
 distro-u2up: Repo path: repos/poky_thud
 distro-u2up: Prepared meta-yocto-bsp layer path: repos/poky_thud/meta-yocto-bsp
-distro-u2up: ---
+------------
+distro-u2up: Prepare addons layers repos!
+distro-u2up: ---------------------------
+distro-u2up: Prepare repo "meta-openembedded" for layer "meta-oe"
+distro-u2up: Repo path: repos/meta-openembedded_thud
+distro-u2up: Prepared meta-oe layer path: repos/meta-openembedded_thud/meta-oe
+------------
 distro-u2up: Prepare machine layer repo for "qemux86"!
 distro-u2up: ------------------------------
 distro-u2up: Repo path: repos/poky_thud
 distro-u2up: Prepared machine layer path: repos/poky_thud/meta
-distro-u2up: ---
+------------
 distro-u2up: Prepare build tree for machine "qemux86"!
 distro-u2up: ------------------------------
 distro-u2up: Build directory: u2up/build.qemux86_thud
 distro-u2up: Done OK!
+distro-u2up: Added environment to BB_ENV_EXTRAWHITE:
+distro-u2up: U2UP_REPOS_DIR=repos
+distro-u2up: U2UP_POKY_REPO_BRANCH=thud
+distro-u2up: U2UP_YOCTO_SHARED=/home/samo/u2up-yocto-shared
+distro-u2up: U2UP_MACH_BUILDIR=u2up/build.qemux86_thud
 distro-u2up: Setting build environment for "qemux86"!
 
 ### Shell environment set up for builds. ###
@@ -121,9 +134,11 @@ Find built images in "u2up/build.qemux86_thud/tmp/deploy/images/qemux86/" for ex
 
 To inspect which machines are currently available for the build, run:
 $ ./distro --machines
+------------
 intel-corei7-64
 qemux86
 raspberrypi3-64
+------------
 ...
 
 To add another (out-of-this-project) machine, create and edit the:
@@ -146,6 +161,11 @@ Test run for "qemux86" target:
 
 .../build.qemux86$ runqemu qemux86 nographic bootparams=ttyprintk.tioccons=1
 
+Reference usage:
+----------------
+
+https://github.com/spog/meta-u2up-homegw.git
+https://github.com/spog/meta-u2up-pc-installer.git
 
 ---
 bye!)
